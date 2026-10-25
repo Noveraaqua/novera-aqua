@@ -1,6 +1,6 @@
 # NOVERA AQUA — Tank World update
 
-This updates the supplied website in place. Deploy index.html, favicon.png and netlify.toml to the SAME existing site/origin. There is no server database in the supplied archive: records live under localStorage key noveraAqua.v2 in each browser. Changing origin does not transfer those records. Existing Setup backup/restore remains available. No production deployment was performed.
+This updates the supplied website in place. Deploy index.html, favicon.png and netlify.toml to the SAME existing site/origin. There is no server database in the supplied archive: records live under localStorage key noveraAqua.v2 in each browser. Changing origin does not transfer those records. Existing Setup backup/restore remains available. Published on GitHub Pages; keep the same origin to retain browser records.
 
 ## Files
 - index.html: added Tank World navigation, SVG renderer, CSS motion/responsive layout, details, variant census, appearance preferences, freshness settings, cross-tab updates. Shared water judging now flags missing/stale data. New manual tests include provenance and save-time metadata; historical missing times are not fabricated.
@@ -13,7 +13,7 @@ HTML/CSS and inline SVG only, no dependencies, canvas, WebGL or game engine. Shr
 
 Existing single-line tanks use their colour line and existing ledger total. Multiple variants can be recorded via Variant counts using `name | count | optional #RRGGBB`. This explicitly records a physical count in the original ledger. Subsequent stock events invalidate the per-variant allocation until reconciled; the ledger total stays authoritative. Unknown counts are labelled, never randomized. Up to 16 representative shrimp per tank; sprite count is explicitly not the actual population.
 
-All registered tanks, including retired tanks marked Retired, appear dynamically. Recorded volume and stage are shown. Dimensions are not in the original schema. Appearance options are optional presentation metadata and do not change volume, stock, water or husbandry records. Default is moss/plants/rocks. Reduced motion respects both the OS and the saved checkbox.
+Active tanks appear dynamically. Retired tanks are hidden from Tank World and available in a collapsed Stock management section. Recorded volume and stage are shown. Dimensions are not in the original schema. Appearance options are optional presentation metadata and do not change volume, stock, water or husbandry records. Default is moss/plants/rocks. Reduced motion respects both the OS and the saved checkbox.
 
 ## Health and updates
 Uses existing editable optimal and critical ranges in Setup. Values outside critical limits are Danger; outside optimal limits are Watch; critical takes precedence. Existing pH-swing checks remain. Missing required fields or stale dates are Watch even if available readings are optimal. DO is optional; TDS is required alongside temperature, pH, GH, KH, ammonia, nitrite and nitrate. Freshness defaults to 7 calendar days and is editable from 1–365 days. Date-only history is honestly labelled time not recorded. Threshold endpoints follow the existing inclusive ranges.
@@ -28,3 +28,6 @@ Passed: 17 automated checks covering missing data, optional DO, optimal/warning/
 Desktop browser QA passed: original Overview, six example aquarium cards, left status icons, distinct status shapes/colours, correct displayed ledger totals, selected-tank highlight, expanded monitoring panel, parameter warnings with thresholds, charts, and page reload retaining original example stock. Existing logo, palette, navigation and original screens retained.
 
 Unverified: real mobile-device/touch rendering, high tank-count or long-duration frame-rate profiling, full browser CRUD/regression suite, cross-tab concurrency under simultaneous writes, real user records at the original hosting origin, and production deployment. Responsive CSS has a single-column breakpoint at 650px; animation-free SVG remains usable without animation support. No backend or real sensor integration can be verified because neither exists in the supplied app.
+
+## Tank management update
+Tank management now offers Delete tank and data with a typed DELETE confirmation. It removes the tank and its ledger, water and feeding records. Transfers involving a surviving tank become equivalent add/remove entries to preserve that tank's stock history. Retiring keeps records and hides the tank from Tank World. Stock has a collapsed retired-tank section with reactivation and deletion controls. Automated checks cover deletion cleanup, transfer conservation, confirmation, saved deletion, and retired visibility.

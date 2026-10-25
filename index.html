@@ -595,7 +595,7 @@ function viewStock(){
    +(mv.length?'<div class="list">'+mv.map(function(e){
       var tx=e.kind==='add'?'Added <b>+'+fmtN(e.qty)+'</b> to '+esc(tankName(e.tank)):e.kind==='sell'?'Sold / removed <b>−'+fmtN(e.qty)+'</b> from '+esc(tankName(e.tank)):e.kind==='move'?'Moved <b>'+fmtN(e.qty)+'</b> '+esc(tankName(e.tank))+' → '+esc(tankName(e.to)):'Recount '+esc(tankName(e.tank))+': <b>'+fmtN(e.qty)+'</b>';
       return '<div class="li"><div class="m">'+tx+'<small>'+fmtD(e.date)+offTxt(e)+(e.note?' · '+esc(e.note):'')+'</small></div><button class="btn danger sm" data-act="del" data-kind="ledger" data-id="'+e.id+'">Delete</button></div>';}).join('')+'</div>':'<p class="empty card">No movements logged.</p>')+'</section>';
-  if(retired.length)h+='<section><h2>Retired tanks</h2><div class="list">'+retired.map(function(t){return '<div class="li"><div class="m">'+esc(t.name)+' · '+esc(t.line)+'<small>'+fmtN(cnt(t.id))+' shrimp on record</small></div>'+exportButton(t)+'<button class="btn ghost sm" data-act="tank-react" data-id="'+t.id+'">Reactivate</button></div>';}).join('')+'</div></section>';
+  if(retired.length)h+='<section><details><summary>Manage retired tanks ('+retired.length+')</summary><div class="list">'+retired.map(function(t){return '<div class="li"><div class="m">'+esc(t.name)+' · '+esc(t.line)+'<small>'+fmtN(cnt(t.id))+' shrimp on record</small></div>'+exportButton(t)+'<button class="btn ghost sm" data-act="tank-react" data-id="'+t.id+'">Reactivate</button><button class="btn danger sm" data-act="tank-delete" data-id="'+t.id+'">Delete tank and data</button></div>';}).join('')+'</div></details></section>';
   return h;
 }
 
@@ -837,7 +837,7 @@ function openTank(id){
    +'<label class="fld"><span>Volume (litres)</span><input type="number" name="vol" id="f_vol" min="0" step="any" inputmode="decimal" value="'+(t?t.vol:'')+'" placeholder="60"></label></div>'
    +'<label class="fld"><span>Average weight per shrimp (mg, optional)</span><input type="number" name="wt" id="f_wt" min="0" step="any" inputmode="decimal" value="'+(t&&t.wt>0?t.wt:'')+'" placeholder="Blank uses '+S.settings.shrimpMg+' mg"><small>Set a lower weight for fry or juveniles so the feed estimate scales down.</small></label>'
    +(t?'':'<label class="fld"><span>Starting shrimp (optional)</span><input type="number" name="start" id="f_start" min="0" step="1" inputmode="numeric" placeholder="0"></label>')
-   +(t?'<button class="btn danger" type="button" data-act="tank-retire" data-id="'+t.id+'" style="margin-bottom:12px;width:100%">Retire this tank</button>':'');
+   +(t?'<button class="btn danger" type="button" data-act="tank-retire" data-id="'+t.id+'" style="margin-bottom:12px;width:100%">Retire this tank</button><button class="btn danger" type="button" data-act="tank-delete" data-id="'+t.id+'" style="margin-bottom:12px;width:100%">Delete tank and data</button>':'');
   openSheet(t?'Edit tank':'New tank',body,t?'Save changes':'Add tank',function(fd){
     var name=val(fd,'name');if(!name)return 'Give the tank a name.';
     var o={name:name,line:val(fd,'line')||'Neocaridina',stage:val(fd,'stage'),vol:parseFloat(val(fd,'vol'))||0,wt:parseFloat(val(fd,'wt'))||0};
@@ -845,6 +845,33 @@ function openTank(id){
     else{var n={id:nid('t'),active:true,feedOpt:'a'};Object.assign(n,o);S.tanks.push(n);var st=parseInt(val(fd,'start'),10);
       if(st>0)S.ledger.push({id:nid('l'),date:today(),tank:n.id,kind:'add',qty:st,note:'Starting stock'});UI.wTank=UI.wTank||n.id;commit();toast('Added '+name+'.');}
   });
+}
+
+function removeTankData(id){
+  if(!tankOf(id))return;
+  S.ledger=S.ledger.reduce(function(out,e){
+    if(e.kind==='move'&&(e.tank===id||e.to===id)){
+      if(e.tank===id&&e.to===id)return out;
+      var kept=Object.assign({},e,{tank:e.tank===id?e.to:e.tank,kind:e.tank===id?'add':'sell'});
+      delete kept.to;kept.note='Transfer involving a deleted tank';out.push(kept);
+    }else if(e.tank!==id&&e.to!==id)out.push(e);
+    return out;
+  },[]);
+  S.water=S.water.filter(function(e){return e.tank!==id;});
+  S.feed=S.feed.filter(function(e){return e.tank!==id;});
+  S.tanks=S.tanks.filter(function(t){return t.id!==id;});
+  ['worldTank','wTank'].forEach(function(k){if(UI[k]===id)UI[k]=null;});
+  ['sFilter','mFilter','fFilter'].forEach(function(k){if(UI[k]===id)UI[k]='all';});
+  refreshCounts();
+}
+function openDeleteTank(id){
+  var t=tankOf(id);if(!t)return;
+  openSheet('Delete '+t.name,
+    '<p>This permanently deletes this tank and its stock, death, water and feeding records. Other tanks keep their stock totals. This cannot be undone without a backup.</p><p class="sub">You can copy a backup in Setup before deleting.</p><label class="fld"><span>Type DELETE to confirm</span><input name="confirmation" autocomplete="off" required></label>',
+    'Delete tank and data',function(fd){
+      if(val(fd,'confirmation')!=='DELETE')return 'Type DELETE exactly to confirm.';
+      removeTankData(id);commit();toast('Tank and its records deleted.');
+    });
 }
 
 function exportButton(t){return '<button class="btn ghost sm" data-act="tank-export" data-tank="'+t.id+'">Export logs</button>';}
@@ -882,6 +909,7 @@ document.addEventListener('click',function(e){
     case 'sheet-close':closeSheet();break;
     case 'tank-add':openTank();break;
     case 'tank-edit':openTank(d.id);break;
+    case 'tank-delete':openDeleteTank(d.id);break;
     case 'stock':openStock(d.kind,d.tank);break;
     case 'stock-pick':openStockPick();break;
     case 'death-add':openDeath(d.tank);break;
@@ -981,8 +1009,8 @@ function worldAquarium(t,large){var pop=worldPopulation(t),id='tw'+(++worldSvgId
 function worldBadge(h){return '<span class="tw-status tw-s'+h.lvl+'"><svg viewBox="0 0 32 32" aria-hidden="true">'+(h.lvl===1?'<path d="M16 2L31 29H1z" fill="currentColor"/>':'<circle cx="16" cy="16" r="15" fill="currentColor"/>')+'<path d="'+(h.lvl===0?'M8 16l5 5 11-12':'M16 10v9m0 4v1')+'" stroke="white" stroke-width="3" fill="none"/></svg>'+LEVEL[h.lvl]+'</span>';}
 function worldPopText(p){return p.known?fmtN(p.total)+' shrimp':'Population not recorded';}
 function worldVariants(p){return p.variants.map(function(v){return '<span class="tw-variant"><i style="background:'+worldColor(v)+'"></i>'+esc(v.name)+': '+(v.count===null?'count not recorded':fmtN(v.count))+'</span>';}).join('')+(p.stale?'<p class="sub">Stock changed. Reconcile variant counts; total remains ledger-based.</p>':'');}
-function viewWorld(){var tanks=S.tanks.slice(),selected=tankOf(UI.worldTank),h=selected?worldHealth(selected):null;
- return '<section class="tw-world '+(S.settings.worldReduced?'tw-still':'')+'"><div class="tw-heading"><div><p class="eyebrow">NOVERA AQUA · Aquarium collection</p><h1>Tank World</h1><p class="sub">'+tanks.length+' registered tanks · Saved manual records · No sensors connected</p></div><button class="btn" data-act="tank-add">+ Add tank</button></div><div class="tw-toolbar"><label><input type="checkbox" data-set="worldReduced" '+(S.settings.worldReduced?'checked':'')+'> Reduce motion</label><label>Stale after <input aria-label="Days until stale" type="number" min="1" max="365" value="'+(S.settings.worldStaleDays||7)+'" data-set="worldStaleDays"> days</label><button class="btn ghost sm" data-act="tab" data-tab="setup">Water thresholds</button></div><p class="sub">Illustrations represent registered variants, not the actual number of shrimp.</p><div class="tw-grid">'+tanks.map(function(t){var p=worldPopulation(t),a=worldHealth(t);return '<button class="tw-card '+(selected&&t.id===selected.id?'tw-selected':'')+'" data-act="world-select" data-id="'+esc(t.id)+'" aria-pressed="'+!!(selected&&t.id===selected.id)+'"><div class="tw-card-head"><strong>'+esc(t.name)+'</strong><span class="sub">'+esc(t.id)+(t.active===false?' · Retired':'')+'</span></div><div class="tw-scene">'+worldBadge(a)+worldAquarium(t)+'</div><div class="tw-card-body"><strong class="tw-count">'+worldPopText(p)+'</strong><div class="tw-variants">'+worldVariants(p)+'</div><div class="tw-readings">'+['temp','ph','no3'].map(function(k){var q=P(k),v=a.tw.w&&a.tw.w[k];return '<span title="'+esc(worldStamp(a.tw.w))+'">'+q.label+' <b>'+fmtV(q,v)+'</b> '+q.unit+'</span>';}).join('')+'</div><p class="sub">'+esc(worldStamp(a.tw.w))+'</p></div></button>';}).join('')+'</div>'+(!tanks.length?emptyFarm():'')+(selected?worldDetail(selected,h):'<p class="tw-prompt">Select an aquarium to inspect its saved measurements and management records.</p>')+'</section>';
+function viewWorld(){var tanks=activeTanks(),selected=tanks.find(function(t){return t.id===UI.worldTank;});if(!selected)UI.worldTank=null;var h=selected?worldHealth(selected):null;
+ return '<section class="tw-world '+(S.settings.worldReduced?'tw-still':'')+'"><div class="tw-heading"><div><p class="eyebrow">NOVERA AQUA · Aquarium collection</p><h1>Tank World</h1><p class="sub">'+tanks.length+' active tanks · Saved manual records · No sensors connected</p></div><button class="btn" data-act="tank-add">+ Add tank</button></div><div class="tw-toolbar"><label><input type="checkbox" data-set="worldReduced" '+(S.settings.worldReduced?'checked':'')+'> Reduce motion</label><label>Stale after <input aria-label="Days until stale" type="number" min="1" max="365" value="'+(S.settings.worldStaleDays||7)+'" data-set="worldStaleDays"> days</label><button class="btn ghost sm" data-act="tab" data-tab="setup">Water thresholds</button></div><p class="sub">Illustrations represent registered variants, not the actual number of shrimp.</p><div class="tw-grid">'+tanks.map(function(t){var p=worldPopulation(t),a=worldHealth(t);return '<button class="tw-card '+(selected&&t.id===selected.id?'tw-selected':'')+'" data-act="world-select" data-id="'+esc(t.id)+'" aria-pressed="'+!!(selected&&t.id===selected.id)+'"><div class="tw-card-head"><strong>'+esc(t.name)+'</strong><span class="sub">'+esc(t.id)+(t.active===false?' · Retired':'')+'</span></div><div class="tw-scene">'+worldBadge(a)+worldAquarium(t)+'</div><div class="tw-card-body"><strong class="tw-count">'+worldPopText(p)+'</strong><div class="tw-variants">'+worldVariants(p)+'</div><div class="tw-readings">'+['temp','ph','no3'].map(function(k){var q=P(k),v=a.tw.w&&a.tw.w[k];return '<span title="'+esc(worldStamp(a.tw.w))+'">'+q.label+' <b>'+fmtV(q,v)+'</b> '+q.unit+'</span>';}).join('')+'</div><p class="sub">'+esc(worldStamp(a.tw.w))+'</p></div></button>';}).join('')+'</div>'+(!tanks.length?emptyFarm():'')+(selected?worldDetail(selected,h):'<p class="tw-prompt">Select an aquarium to inspect its saved measurements and management records.</p>')+'</section>';
 }
 function worldDetail(t,h){var p=worldPopulation(t),w=h.tw.w,history=S.water.filter(function(x){return x.tank===t.id;}).sort(byDateDesc).slice(0,5);
  return '<article class="card tw-detail" id="tw-detail" tabindex="-1"><p class="eyebrow">Selected aquarium · '+esc(t.id)+'</p><h2>'+esc(t.name)+'</h2><p class="sub">'+esc(t.stage||'Stage not recorded')+' · '+(t.vol?esc(t.vol)+' L':'Volume not recorded')+' · Dimensions not recorded</p><div class="tw-scene">'+worldBadge(h)+worldAquarium(t,true)+'</div><strong class="tw-count">'+worldPopText(p)+'</strong><div class="tw-variants">'+worldVariants(p)+'</div><div class="actions"><button class="btn" data-act="water-add" data-tank="'+esc(t.id)+'">Log water test</button><button class="btn ghost" data-act="stock" data-kind="count" data-tank="'+esc(t.id)+'">Update stock</button><button class="btn ghost" data-act="tank-edit" data-id="'+esc(t.id)+'">Manage tank</button><button class="btn ghost" data-act="world-variants" data-id="'+esc(t.id)+'">Variant counts</button></div><label class="tw-toolbar">Visual environment <select data-world-decor="'+esc(t.id)+'">'+[['planted','Moss & rocks'],['wood','Driftwood garden'],['minimal','Breeding tank'],['sand','Sand garden']].map(function(a){return '<option value="'+a[0]+'" '+((t.worldDecor||'planted')===a[0]?'selected':'')+'>'+a[1]+'</option>';}).join('')+'</select><small>Appearance only; does not change husbandry records.</small></label><h3>Monitoring · '+LEVEL[h.lvl]+'</h3><p class="sub">'+(S.meta.sample?'Simulated demonstration data':'Cached, manually recorded measurements')+' · '+esc(worldStamp(w))+'</p>'+(h.reasons.length?'<ul class="tw-warnings">'+h.reasons.map(function(r){return '<li>'+esc(r)+'</li>';}).join('')+'</ul>':'<p>All required readings are within configured targets and freshness limits.</p>')+'<div class="tw-parameters">'+PARAMS.map(function(q){var i=h.tw.items.find(function(x){return x.p.k===q.k;}),v=w&&w[q.k];return '<div><span class="sub">'+q.label+'</span><strong>'+fmtV(q,v)+' <small>'+q.unit+'</small></strong><span>'+(i&&i.j?LEVEL[i.j.lvl]+(h.tw.age>=(S.settings.worldStaleDays||7)?' · stale':''):'Not recorded')+'</span><small>Target '+rangeTxt(q.k)+'</small></div>';}).join('')+'</div><h3>30-day history</h3><label>Parameter <select data-ui="worldParam">'+PARAMS.map(function(q){return '<option value="'+q.k+'" '+((UI.worldParam||'ph')===q.k?'selected':'')+'>'+q.label+'</option>';}).join('')+'</select></label>'+waterChart(t.id,UI.worldParam||'ph')+'<h3>Recent tests</h3>'+(history.length?history.map(function(x){return '<p class="sub">'+esc(worldStamp(x))+' · '+esc(x.note||'Manual water test')+'</p>';}).join(''):'<p class="sub">No tests saved.</p>')+'<h3>Active husbandry alerts</h3>'+worldActiveAlerts(t)+'<h3>Water changes</h3><p class="sub">The existing app has no completed water-change log. Scheduled tasks are available in Schedule; they are not proof of a water change.</p><button class="btn ghost sm" data-act="tab" data-tab="schedule">Open schedule</button></article>';

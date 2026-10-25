@@ -1,7 +1,7 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const html=fs.readFileSync(require('path').join(__dirname,'../index.html'),'utf8');
 let code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
-code=code.slice(0,code.indexOf('/* ---------- boot ---------- */'))+`globalThis.api={state:x=>{S=x;refreshCounts()},emptyState,worldHealth,worldPopulation,worldColor,worldAquarium,worldSignature,viewWorld,save,load,mergeSettings,counts,views:VIEWS,ui:UI,today};})();`;
+code=code.slice(0,code.indexOf('/* ---------- boot ---------- */'))+`globalThis.api={state:x=>{S=x;refreshCounts()},confirmDelete:fd=>sheetFn(fd),removeTankData,openDeleteTank,openTank,emptyState,worldHealth,worldPopulation,worldColor,worldAquarium,worldSignature,viewWorld,save,load,mergeSettings,counts,views:VIEWS,ui:UI,today};})();`;
 const nodes={},storage={}; const ctx={console,setInterval:()=>{},setTimeout:()=>{},window:{addEventListener:()=>{}},document:{addEventListener:()=>{},querySelector:s=>nodes[s]||(nodes[s]={})},localStorage:{getItem:k=>storage[k],setItem:(k,v)=>storage[k]=v}};
 vm.createContext(ctx);vm.runInContext(code,ctx);const a=ctx.api;let checks=0;function test(name,fn){fn();checks++;console.log('PASS '+name);}
 let s=a.emptyState(),t={id:'t1',name:'Test',line:'Blue Dream',active:true};s.tanks=[t];a.state(s);
@@ -24,5 +24,16 @@ test('Custom colour is validated',()=>{assert.equal(a.worldColor({name:'Custom',
 test('Population remains saved through reload',()=>{a.save();const restored=a.load();assert.equal(restored.ledger.length,2);assert.equal(restored.tanks[0].worldVariants.length,2)});
 test('New settings survive settings merge',()=>{assert.equal(a.mergeSettings({worldStaleDays:3,worldReduced:true}).worldStaleDays,3)});
 test('All existing screens still render',()=>{for(const [k,v] of Object.entries(a.views))assert.equal(typeof v(),'string',k)});
-test('Registered tanks render dynamically including retired',()=>{s.tanks.push({id:'t2',name:'Retired',active:false,line:'Black Rose'});a.state(s);assert(a.viewWorld().includes('2 registered tanks'));assert(a.viewWorld().includes('Retired'))});
+test('Retired tanks are hidden and selected retired details cleared',()=>{s.tanks.push({id:'t2',name:'Retired',active:false,line:'Black Rose'});a.state(s);a.ui.worldTank='t2';assert(a.viewWorld().includes('1 active tanks'));assert(!a.viewWorld().includes('Retired'));assert.equal(a.ui.worldTank,null);assert(a.views.stock().includes('<details><summary>Manage retired tanks (1)</summary>'))});
+test('Delete control is available from tank management',()=>{a.openTank('t1');assert(nodes['#panel'].innerHTML.includes('data-act="tank-delete"'));a.openDeleteTank('t1');assert(nodes['#panel'].innerHTML.includes('Type DELETE to confirm'));assert.equal(a.confirmDelete({get:()=>''}),'Type DELETE exactly to confirm.');assert(s.tanks.some(t=>t.id==='t1'))});
+test('Deleting a tank removes records and preserves transfer counterparts',()=>{
+ s.tanks.push({id:'t3',name:'Other',active:true});
+ s.ledger.push({id:'l3',tank:'t1',to:'t3',kind:'move',qty:10,date:a.today()},{id:'l4',tank:'t3',to:'t1',kind:'move',qty:3,date:a.today()});
+ s.feed=[{id:'f1',tank:'t1',date:a.today(),g:1},{id:'f2',tank:'t3',date:a.today(),g:1}];s.water.push({id:'w2',tank:'t3',date:a.today()});a.state(s);
+ const before=a.counts().t3;a.ui.worldTank='t1';a.ui.sFilter='t1';a.removeTankData('t1');
+ assert(!s.tanks.some(t=>t.id==='t1'));assert(!s.ledger.some(e=>e.tank==='t1'||e.to==='t1'));assert(!s.water.some(e=>e.tank==='t1'));assert.equal(s.feed.length,1);assert.equal(a.counts().t3,before);assert.equal(a.ui.worldTank,null);assert.equal(a.ui.sFilter,'all');
+ a.save();const restored=a.load();assert(!restored.tanks.some(t=>t.id==='t1'));assert.equal(restored.feed[0].tank,'t3');
+ for(const [k,v] of Object.entries(a.views))assert.equal(typeof v(),'string',k);
+});
+test('Deleting an unknown tank does not change records',()=>{const before=JSON.stringify(s);a.removeTankData('missing');assert.equal(JSON.stringify(s),before)});
 console.log(checks+' checks passed');
