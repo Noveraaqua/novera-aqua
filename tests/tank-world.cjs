@@ -1,0 +1,28 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const html=fs.readFileSync(require('path').join(__dirname,'../index.html'),'utf8');
+let code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
+code=code.slice(0,code.indexOf('/* ---------- boot ---------- */'))+`globalThis.api={state:x=>{S=x;refreshCounts()},emptyState,worldHealth,worldPopulation,worldColor,worldAquarium,worldSignature,viewWorld,save,load,mergeSettings,counts,views:VIEWS,ui:UI,today};})();`;
+const nodes={},storage={}; const ctx={console,setInterval:()=>{},setTimeout:()=>{},window:{addEventListener:()=>{}},document:{addEventListener:()=>{},querySelector:s=>nodes[s]||(nodes[s]={})},localStorage:{getItem:k=>storage[k],setItem:(k,v)=>storage[k]=v}};
+vm.createContext(ctx);vm.runInContext(code,ctx);const a=ctx.api;let checks=0;function test(name,fn){fn();checks++;console.log('PASS '+name);}
+let s=a.emptyState(),t={id:'t1',name:'Test',line:'Blue Dream',active:true};s.tanks=[t];a.state(s);
+test('Missing measurements are Watch',()=>assert.equal(a.worldHealth(t).lvl,1));
+test('No stock entries mean unknown population',()=>assert.equal(a.worldPopulation(t).known,false));
+let w={id:'w1',tank:t.id,date:a.today(),temp:27,ph:7,gh:8,kh:3,tds:190,nh3:0,no2:0,no3:10};s.water=[w];
+test('Complete fresh targets are Optimal; DO optional',()=>assert.equal(a.worldHealth(t).lvl,0));
+test('Warning breach',()=>{w.temp=30;assert.equal(a.worldHealth(t).lvl,1)});
+test('Critical overrides warning',()=>{w.nh3=.3;assert.equal(a.worldHealth(t).lvl,2)});
+test('Missing required parameter',()=>{w.temp=27;w.nh3=0;delete w.kh;assert.equal(a.worldHealth(t).lvl,1);w.kh=3});
+test('Stale readings are Watch',()=>{w.date='2020-01-01';assert.equal(a.worldHealth(t).lvl,1);w.date=a.today()});
+test('Configurable thresholds',()=>{s.settings.ranges.temp.omax=26;assert.equal(a.worldHealth(t).lvl,1);s.settings.ranges.temp.omax=29});
+s.ledger=[{id:'l1',tank:'t1',kind:'count',qty:107,date:a.today()}];a.state(s);
+test('Recorded ledger total',()=>assert.equal(a.worldPopulation(t).total,107));
+t.worldVariants=[{name:'Cherry Red',count:65},{name:'Blue Dream',count:42}];t.worldStockSignature=a.worldSignature(t.id);
+test('Mixed variants equal recorded total',()=>assert.equal(a.worldPopulation(t).variants.reduce((n,v)=>n+v.count,0),107));
+test('Stock movement invalidates breakdown but retains total',()=>{s.ledger.push({id:'l2',kind:'death',tank:'t1',qty:2,date:a.today()});a.state(s);assert.equal(a.worldPopulation(t).total,105);assert.equal(a.worldPopulation(t).variants[0].count,null)});
+test('SVG contains anatomy and Rili translucent middle',()=>assert(a.worldAquarium({...t,worldVariants:[{name:'Red Rili',count:2}]},false).includes('#c7e6df')));
+test('Custom colour is validated',()=>{assert.equal(a.worldColor({name:'Custom',color:'#abcdef'}),'#abcdef');assert(!a.worldColor({name:'Custom',color:'bad" onload="'}).includes('onload'))});
+test('Population remains saved through reload',()=>{a.save();const restored=a.load();assert.equal(restored.ledger.length,2);assert.equal(restored.tanks[0].worldVariants.length,2)});
+test('New settings survive settings merge',()=>{assert.equal(a.mergeSettings({worldStaleDays:3,worldReduced:true}).worldStaleDays,3)});
+test('All existing screens still render',()=>{for(const [k,v] of Object.entries(a.views))assert.equal(typeof v(),'string',k)});
+test('Registered tanks render dynamically including retired',()=>{s.tanks.push({id:'t2',name:'Retired',active:false,line:'Black Rose'});a.state(s);assert(a.viewWorld().includes('2 registered tanks'));assert(a.viewWorld().includes('Retired'))});
+console.log(checks+' checks passed');
