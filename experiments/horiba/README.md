@@ -35,3 +35,6 @@ python evaluate.py /path/to/temporary-output/recognition.json
 ```
 
 This experiment writes temporary crops for inspection to the specified local output directory. It does not upload images, write browser storage or alter logs. No photos, crops, raw OCR text or image metadata are included in the repository. Production integration must keep all image buffers in memory and release them on close/cancel/replace/save.
+
+## Latest engine comparison
+See [ENGINE-COMPARISON.md](ENGINE-COMPARISON.md) and `engine-benchmark.json` for the subsequent frozen-crop PaddleOCR/Tesseract comparison: 67 correct / 0 incorrect / 23 unresolved for Paddle across ten nine-reading photos. The comparison uses a different, explicitly documented agreement metric from the original conservative benchmark above. Browser/mobile integration remains pending.

@@ -1,0 +1,276 @@
+{
+  "rule": "For each engine, grayscale and binary strings must both be valid signed decimal numbers and match exactly. No confidence threshold. This is a comparison metric, not approval to save.",
+  "reports": [
+    {
+      "batch": "horiba",
+      "photos": 8,
+      "readings": 72,
+      "runtime": "Node, ONNX Runtime Web WASM, single thread; native canvas adapter (not mobile benchmark)",
+      "versions": {
+        "esearch": "8.5.0",
+        "ort": "1.23.2",
+        "tesseract": "6.0.1",
+        "model": "en_PP-OCRv3_rec_infer"
+      },
+      "modelBytes": 8967018,
+      "modelSHA256": "ef7abd8bd3629ae57ea2c28b425c1bd258a871b93fd2fe7c433946ade9b5d9ea",
+      "paddleLoadMs": 423.580143,
+      "tesseractLoadMs": 412.470334,
+      "combinedProcessRSSBytes": 324141056,
+      "engines": {
+        "paddle": {
+          "correct": 49,
+          "incorrect": 0,
+          "unresolved": 23,
+          "byParameter": {
+            "temp": {
+              "correct": 6,
+              "incorrect": 0,
+              "unresolved": 2
+            },
+            "ph": {
+              "correct": 6,
+              "incorrect": 0,
+              "unresolved": 2
+            },
+            "phmv": {
+              "correct": 1,
+              "incorrect": 0,
+              "unresolved": 7
+            },
+            "orp": {
+              "correct": 7,
+              "incorrect": 0,
+              "unresolved": 1
+            },
+            "ec": {
+              "correct": 7,
+              "incorrect": 0,
+              "unresolved": 1
+            },
+            "do": {
+              "correct": 7,
+              "incorrect": 0,
+              "unresolved": 1
+            },
+            "saturation": {
+              "correct": 5,
+              "incorrect": 0,
+              "unresolved": 3
+            },
+            "tds": {
+              "correct": 4,
+              "incorrect": 0,
+              "unresolved": 4
+            },
+            "salinity": {
+              "correct": 6,
+              "incorrect": 0,
+              "unresolved": 2
+            }
+          },
+          "medianCropMs": 33.78834149999989,
+          "totalInferenceMs": 4350.650882,
+          "errors": []
+        },
+        "tesseract": {
+          "correct": 31,
+          "incorrect": 2,
+          "unresolved": 39,
+          "byParameter": {
+            "temp": {
+              "correct": 3,
+              "incorrect": 0,
+              "unresolved": 5
+            },
+            "ph": {
+              "correct": 2,
+              "incorrect": 1,
+              "unresolved": 5
+            },
+            "phmv": {
+              "correct": 1,
+              "incorrect": 1,
+              "unresolved": 6
+            },
+            "orp": {
+              "correct": 6,
+              "incorrect": 0,
+              "unresolved": 2
+            },
+            "ec": {
+              "correct": 5,
+              "incorrect": 0,
+              "unresolved": 3
+            },
+            "do": {
+              "correct": 3,
+              "incorrect": 0,
+              "unresolved": 5
+            },
+            "saturation": {
+              "correct": 3,
+              "incorrect": 0,
+              "unresolved": 5
+            },
+            "tds": {
+              "correct": 5,
+              "incorrect": 0,
+              "unresolved": 3
+            },
+            "salinity": {
+              "correct": 3,
+              "incorrect": 0,
+              "unresolved": 5
+            }
+          },
+          "medianCropMs": 14.846353499999623,
+          "totalInferenceMs": 2177.0158020000044,
+          "errors": [
+            {
+              "file": "05-1000492237.jpg",
+              "field": "ph",
+              "actual": 7.477,
+              "expected": 7.47
+            },
+            {
+              "file": "05-1000492237.jpg",
+              "field": "phmv",
+              "actual": -34,
+              "expected": -54
+            }
+          ]
+        }
+      }
+    },
+    {
+      "batch": "new-batch-output",
+      "photos": 2,
+      "readings": 18,
+      "runtime": "Node, ONNX Runtime Web WASM, single thread; native canvas adapter (not mobile benchmark)",
+      "versions": {
+        "esearch": "8.5.0",
+        "ort": "1.23.2",
+        "tesseract": "6.0.1",
+        "model": "en_PP-OCRv3_rec_infer"
+      },
+      "modelBytes": 8967018,
+      "modelSHA256": "ef7abd8bd3629ae57ea2c28b425c1bd258a871b93fd2fe7c433946ade9b5d9ea",
+      "paddleLoadMs": 240.21222,
+      "tesseractLoadMs": 417.73061600000005,
+      "combinedProcessRSSBytes": 307052544,
+      "engines": {
+        "paddle": {
+          "correct": 18,
+          "incorrect": 0,
+          "unresolved": 0,
+          "byParameter": {
+            "temp": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "ph": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "phmv": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "orp": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "ec": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "do": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "saturation": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "tds": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "salinity": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            }
+          },
+          "medianCropMs": 37.30979149999996,
+          "totalInferenceMs": 1391.193583,
+          "errors": []
+        },
+        "tesseract": {
+          "correct": 14,
+          "incorrect": 0,
+          "unresolved": 4,
+          "byParameter": {
+            "temp": {
+              "correct": 0,
+              "incorrect": 0,
+              "unresolved": 2
+            },
+            "ph": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "phmv": {
+              "correct": 1,
+              "incorrect": 0,
+              "unresolved": 1
+            },
+            "orp": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "ec": {
+              "correct": 1,
+              "incorrect": 0,
+              "unresolved": 1
+            },
+            "do": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "saturation": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "tds": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            },
+            "salinity": {
+              "correct": 2,
+              "incorrect": 0,
+              "unresolved": 0
+            }
+          },
+          "medianCropMs": 15.652166999999963,
+          "totalInferenceMs": 683.8908760000011,
+          "errors": []
+        }
+      }
+    }
+  ]
+}
