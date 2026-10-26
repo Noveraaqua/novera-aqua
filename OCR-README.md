@@ -1,3 +1,5 @@
+> Development branch: the PaddleOCR worker candidate is documented in [HORIBA-INTEGRATION.md](HORIBA-INTEGRATION.md). The following describes the earlier deployed Tesseract implementation.
+
 # Photo-assisted water logging
 
 ## Integration

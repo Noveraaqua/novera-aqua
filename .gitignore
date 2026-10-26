@@ -1,0 +1,5 @@
+assets/models/*.onnx
+assets/models/en-dict.txt
+dist/
+__pycache__/
+node_modules/

@@ -1,26 +1,16 @@
 /* Browser-only OCR controller. Images and recognition text never enter application state. */
 (function(){
 'use strict';
-const CDN='https://cdn.jsdelivr.net/npm/';
-const VERSION='6.0.1';
-let scriptPromise;
-function loadOCR(){
- if(window.Tesseract)return Promise.resolve(window.Tesseract);
- if(scriptPromise)return scriptPromise;
- scriptPromise=new Promise((resolve,reject)=>{
-  const s=document.createElement('script');s.src=CDN+'tesseract.js@'+VERSION+'/dist/tesseract.min.js';s.crossOrigin='anonymous';
-  const timer=setTimeout(()=>{s.remove();reject(new Error('OCR download timed out. Check your connection and retry, or enter readings manually.'));},30000);
-  s.onload=()=>{clearTimeout(timer);resolve(window.Tesseract);};s.onerror=()=>{clearTimeout(timer);s.remove();reject(new Error('OCR could not load. Check your connection and retry, or enter readings manually.'));};document.head.appendChild(s);
- }).catch(e=>{scriptPromise=null;throw e;});return scriptPromise;
-}
+const VERSION='PaddleOCR-en-v3/esearch-8.5.0';
+const WORKER_URL=new URL('./horiba-worker.js',document.currentScript.src).href;
 function attach(form,options){
  const host=form.querySelector('[data-photo-host]');if(!host)return;
- let disposed=false,generation=0,worker=null,activeInput=null,canvas=null,bitmap=null,applied=false,used=false,owned={},metadata=[],busy=false;
+ let disposed=false,generation=0,worker=null,activeInput=null,canvas=null,bitmap=null,applied=false,used=false,owned={},metadata=[],busy=false,cancelScan=null,activeTimer=null;
  const field=k=>form.elements.namedItem(k);
  const el=(tag,props={},text)=>{const n=document.createElement(tag);Object.assign(n,props);if(text!=null)n.textContent=text;return n;};
  const launch=el('button',{type:'button',className:'btn ghost'},'Read from photo');host.append(launch);
  const panel=el('section',{className:'photo-panel',hidden:true});host.append(panel);
- panel.innerHTML='<h3>Read from photo</h3><p class="sub">Your photo is processed on this device. Only confirmed readings are saved.</p><p class="sub">Choose a sharp photo. Avoid glare and include the parameter labels and units. Drag across the screen to crop, or adjust the crop sliders.</p><div class="photo-actions"><label>Choose image <input data-file type="file" accept="image/jpeg,image/png,image/webp"></label><label>Take photo <input data-camera type="file" accept="image/*" capture="environment"></label></div><div class="photo-preview" hidden><canvas aria-label="Temporary meter photo"></canvas><div class="photo-box"></div></div><div data-image-controls hidden><div class="photo-sliders"></div><div class="photo-actions"><button type="button" data-rotate class="btn ghost sm">Rotate 90°</button><button type="button" data-full class="btn ghost sm">Whole image</button></div><label class="photo-review-confirm"><input type="checkbox" data-enhance> Enhance contrast for recognition</label><button type="button" data-run class="btn">Read selected screen</button></div><progress max="1" value="0" hidden></progress><p data-status role="status" aria-live="polite"></p><div data-results></div><div class="photo-actions"><button type="button" data-stop class="btn ghost" hidden>Stop recognition</button><button type="button" data-cancel class="btn ghost">Cancel photo entry</button></div>';
+ panel.innerHTML='<h3>Read from photo</h3><p class="sub">Your photo is processed on this device. Only confirmed readings are saved.</p><p class="sub">Choose a sharp photo. Avoid glare and include the parameter labels and units. HORIBA nine-reading display only. Screen alignment is automatic; use Adjust photo if it cannot find the screen.</p><div class="photo-actions"><label>Choose image <input data-file type="file" accept="image/jpeg,image/png,image/webp"></label><label>Take photo <input data-camera type="file" accept="image/*" capture="environment"></label></div><div class="photo-preview" hidden><canvas aria-label="Temporary meter photo"></canvas><div class="photo-box"></div></div><div data-image-controls hidden><details data-adjust><summary>Adjust photo</summary><label class="photo-review-confirm"><input type="checkbox" data-manual> My crop contains only the LCD, upright (skip automatic screen detection)</label><div class="photo-sliders"></div><div class="photo-actions"><button type="button" data-rotate class="btn ghost sm">Rotate 90°</button><button type="button" data-full class="btn ghost sm">Whole image</button></div></details><button type="button" data-run class="btn">Scan HORIBA screen</button></div><progress max="1" value="0" hidden></progress><p data-status role="status" aria-live="polite"></p><div data-results></div><div class="photo-actions"><button type="button" data-stop class="btn ghost" hidden>Stop recognition</button><button type="button" data-cancel class="btn ghost">Cancel photo entry</button></div>';
  const q=s=>panel.querySelector(s),status=q('[data-status]'),preview=q('.photo-preview'),box=q('.photo-box'),controls=q('[data-image-controls]'),results=q('[data-results]'),progress=q('progress');
  const workspace=el('div',{className:'photo-workspace'});panel.insertBefore(workspace,controls);workspace.append(preview,results);
  canvas=q('canvas');let crop={left:0,top:0,right:100,bottom:100},rows=[];
@@ -28,11 +18,11 @@ function attach(form,options){
  function drawBox(){for(const k in sliders)sliders[k].value=crop[k];box.style.left=crop.left+'%';box.style.top=crop.top+'%';box.style.width=(crop.right-crop.left)+'%';box.style.height=(crop.bottom-crop.top)+'%';}
  function restoreOwned(){for(const k in owned){const f=field(k),v=owned[k];if(f&&f.value===v.after)f.value=v.before;}owned={};metadata=[];applied=false;}
  function invalidate(){restoreOwned();results.replaceChildren();workspace.classList.remove('has-results');rows=[];}
- function destroyWorker(){if(activeInput){activeInput.width=activeInput.height=1;activeInput=null;}if(worker){worker.terminate().catch(()=>{});worker=null;}busy=false;for(const c of controls.querySelectorAll('input,button'))c.disabled=false;q('[data-stop]').hidden=true;progress.hidden=true;q('[data-run]').disabled=false;}
+ function destroyWorker(){if(activeTimer){clearTimeout(activeTimer);activeTimer=null;}if(cancelScan){const reject=cancelScan;cancelScan=null;reject(new Error('Recognition cancelled.'));}if(activeInput){activeInput.width=activeInput.height=1;activeInput=null;}if(worker){worker.terminate();worker=null;}busy=false;for(const c of controls.querySelectorAll('input,button'))c.disabled=false;q('[data-stop]').hidden=true;progress.hidden=true;q('[data-run]').disabled=false;}
  function clearImage(){if(bitmap){bitmap.close?.();bitmap=null;}if(canvas){canvas.width=1;canvas.height=1;}preview.hidden=true;controls.hidden=true;}
  function reset(){generation++;destroyWorker();invalidate();clearImage();for(const input of panel.querySelectorAll('input[type=file]'))input.value='';used=false;status.textContent='';panel.hidden=true;launch.hidden=false;}
  async function choose(file){
-  if(!file)return;generation++;const token=generation;destroyWorker();invalidate();clearImage();used=true;
+  if(!file)return;q('[data-manual]').checked=false;generation++;const token=generation;destroyWorker();invalidate();clearImage();used=true;
   if(file.size>15*1024*1024){status.textContent='Choose a photo smaller than 15 MB.';return;}
   if(!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)){status.textContent='Choose a JPEG, PNG or WebP image. Convert HEIC to JPEG if your browser cannot open it.';return;}
   status.textContent='Opening photo…';
@@ -42,7 +32,7 @@ function attach(form,options){
    const scale=Math.min(1,1600/Math.max(b.width,b.height));canvas.width=Math.round(b.width*scale);canvas.height=Math.round(b.height*scale);canvas.getContext('2d').drawImage(b,0,0,canvas.width,canvas.height);b.close();
    // CSS sizing keeps the crop overlay aligned with the actual rendered canvas.
    canvas.style.maxHeight='none';preview.style.maxWidth=Math.min(520,440*canvas.width/canvas.height)+'px';
-   crop={left:0,top:0,right:100,bottom:100};preview.hidden=false;controls.hidden=false;drawBox();status.textContent='Crop around the meter screen, then select Read selected screen.';
+   crop={left:0,top:0,right:100,bottom:100};preview.hidden=false;controls.hidden=false;drawBox();status.textContent='Ready to scan. The screen will be aligned automatically.';
   }catch(e){if(disposed||token!==generation)return;status.textContent='This photo could not be opened. Try JPEG or PNG, or enter readings manually.';}
  }
  q('[data-file]').onchange=e=>choose(e.target.files[0]);q('[data-camera]').onchange=e=>choose(e.target.files[0]);
@@ -64,19 +54,25 @@ function attach(form,options){
   invalidate();const token=++generation;busy=true;used=true;for(const c of controls.querySelectorAll('input,button'))c.disabled=true;progress.hidden=false;q('[data-stop]').hidden=false;q('[data-run]').disabled=true;status.textContent='Loading OCR on this device…';
   let input=null,timer;
   try{
-   const T=await loadOCR();if(disposed||token!==generation)return;
-   const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Recognition timed out. Try a smaller, sharper crop.')),90000);});
-   const work=(async()=>{
-    const w=await T.createWorker('eng',1,{workerPath:CDN+'tesseract.js@6.0.1/dist/worker.min.js',corePath:CDN+'tesseract.js-core@6.0.0',langPath:CDN+'@tesseract.js-data/eng@1.0.0/4.0.0_best_int',cacheMethod:'none',logger:m=>{if(token===generation&&!disposed){progress.value=m.progress||0;status.textContent=m.status==='recognizing text'?'Reading screen… '+Math.round((m.progress||0)*100)+'%':'Preparing OCR…';}},errorHandler:()=>{}});
-    if(disposed||token!==generation){await w.terminate();return null;}worker=w;
-    await w.setParameters({tessedit_pageseg_mode:'11',preserve_interword_spaces:'1'});
-    const x=Math.round(canvas.width*crop.left/100),y=Math.round(canvas.height*crop.top/100),width=Math.round(canvas.width*(crop.right-crop.left)/100),height=Math.round(canvas.height*(crop.bottom-crop.top)/100);
-    input=document.createElement('canvas');activeInput=input;const scale=Math.min(2,1600/Math.max(width,height));input.width=Math.round(width*scale);input.height=Math.round(height*scale);const c=input.getContext('2d');c.drawImage(canvas,x,y,width,height,0,0,input.width,input.height);
-    if(q('[data-enhance]').checked){const im=c.getImageData(0,0,input.width,input.height);for(let i=0;i<im.data.length;i+=4){const v=(im.data[i]*.299+im.data[i+1]*.587+im.data[i+2]*.114-128)*1.4+128;im.data[i]=im.data[i+1]=im.data[i+2]=Math.max(0,Math.min(255,v));}c.putImageData(im,0,0);}
-    const result=await w.recognize(input,{}, {text:true,blocks:true});return result.data;
-   })();
-   const data=await Promise.race([work,timeout]);if(disposed||token!==generation||!data)return;
-   const parsed=window.NoveraOCRParser.parse(data);showResults(parsed);status.textContent='Review every value against the photo. OCR can misread digits, signs and units.';
+   const timeout=new Promise((_,reject)=>{activeTimer=timer=setTimeout(()=>reject(new Error('Recognition timed out. Retry with a clear close-up, or enter manually.')),120000);});
+   const x=Math.round(canvas.width*crop.left/100),y=Math.round(canvas.height*crop.top/100),width=Math.round(canvas.width*(crop.right-crop.left)/100),height=Math.round(canvas.height*(crop.bottom-crop.top)/100);
+   input=document.createElement('canvas');activeInput=input;input.width=width;input.height=height;const c=input.getContext('2d');c.drawImage(canvas,x,y,width,height,0,0,width,height);
+   const image=c.getImageData(0,0,width,height);
+   const job=new Promise((resolve,reject)=>{
+    cancelScan=reject;
+    const w=new Worker(WORKER_URL);worker=w;
+    w.onerror=()=>reject(new Error('OCR assets could not load. Retry or enter readings manually.'));
+    w.onmessage=({data})=>{if(disposed||token!==generation)return;
+     if(data.type==='progress'){status.textContent=data.message;progress.value=data.progress;}
+     if(data.type==='error')reject(new Error(data.message));
+     if(data.type==='result'){cancelScan=null;resolve(data);}
+    };
+    w.postMessage({type:'scan',image,manual:q('[data-manual]').checked},[image.data.buffer]);
+   });
+   const data=await Promise.race([job,timeout]);if(disposed||token!==generation)return;
+   canvas.width=data.screen.width;canvas.height=data.screen.height;canvas.getContext('2d').putImageData(data.screen,0,0);
+   preview.style.maxWidth='520px';crop={left:0,top:0,right:100,bottom:100};drawBox();q('[data-manual]').checked=true;
+   const parsed=data.result;showResults(parsed);status.textContent='Review every value against the photo. OCR can misread digits, signs and units.';
   }catch(e){if(!disposed&&token===generation){generation++;destroyWorker();status.textContent=e.message||'Recognition failed. Retry or enter readings manually.';}}
   finally{clearTimeout(timer);if(input)input.width=input.height=1;if(token===generation)destroyWorker();}
  };
