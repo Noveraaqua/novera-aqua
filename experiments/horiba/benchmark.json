@@ -1,0 +1,57 @@
+{
+  "photos": [
+    {
+      "file": "01-1000492227.jpg",
+      "correct": 5,
+      "incorrect": 0,
+      "unresolved": 4
+    },
+    {
+      "file": "02-1000492234.jpg",
+      "correct": 0,
+      "incorrect": 0,
+      "unresolved": 9
+    },
+    {
+      "file": "03-1000492235.jpg",
+      "correct": 6,
+      "incorrect": 0,
+      "unresolved": 3
+    },
+    {
+      "file": "04-1000492236.jpg",
+      "correct": 2,
+      "incorrect": 0,
+      "unresolved": 7
+    },
+    {
+      "file": "05-1000492237.jpg",
+      "correct": 5,
+      "incorrect": 0,
+      "unresolved": 4
+    },
+    {
+      "file": "06-1000492241.jpg",
+      "correct": 1,
+      "incorrect": 0,
+      "unresolved": 8
+    },
+    {
+      "file": "07-1000490956.jpg",
+      "correct": 0,
+      "incorrect": 0,
+      "unresolved": 9
+    },
+    {
+      "file": "08-1000490948.jpg",
+      "correct": 1,
+      "incorrect": 0,
+      "unresolved": 8
+    }
+  ],
+  "totals": {
+    "correct": 20,
+    "incorrect": 0,
+    "unresolved": 52
+  }
+}
