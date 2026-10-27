@@ -226,6 +226,10 @@ textarea.bk{width:100%;min-height:110px;font:12px/1.4 ui-monospace,Menlo,Consola
 /* Compact Water monitoring: detailed readings remain user-opened. */
 .water-filters{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 8px}.water-filters .btn{min-height:44px;white-space:normal;text-align:left}.water-filters [aria-pressed=true]{background:var(--brandBg);color:#fff;border-color:var(--brandBg)}.water-filter-help{margin-bottom:10px}.water-summary-details summary{cursor:pointer;padding:12px 0;min-height:44px;font-size:13px;font-weight:600}.water-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;margin-top:10px}.water-compact{padding:16px;min-width:0;overflow-wrap:anywhere}.water-compact h3{font-size:21px;margin:0 0 4px}.water-compact header{margin-bottom:10px}.water-compact .water-causes p{font-size:14px;margin:8px 0;line-height:1.5}.water-stamp{font-size:12px;color:var(--muted);margin:12px 0}.water-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.water-card-actions .btn,.water-expand{min-height:44px}.water-expand{width:100%;margin-top:10px;white-space:normal}.water-history summary{cursor:pointer;min-height:44px;padding:14px 0;font-weight:600;font-size:13px}.water-inline-trend{margin:14px 0;padding-top:12px;border-top:1px solid var(--line)}.water-inline-trend h4{margin:0 0 10px}.water-inline-trend .fld{max-width:100%}.water-history-entry{border-top:1px solid var(--line);padding:12px 0}.water-history-entry h4{margin:0 0 8px}.water-history-entry dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.water-history-entry dl>div{padding:8px;background:var(--bg);border-radius:6px}.water-history-entry dt{font-size:12px}.water-history-entry dd{margin:3px 0 0;font-weight:600;font-size:13px}.water-all-history{margin-top:18px}.water-compact .water-gauges{margin-top:12px}.water-compact .water-status-pair{flex-wrap:wrap}.water-monitor .sec-h{align-items:flex-start}.water-monitor .sec-h>.btn{flex-shrink:0}
 @media(max-width:600px){.water-compact-grid{grid-template-columns:1fr}.water-filters{display:grid;grid-template-columns:1fr 1fr}.water-filters .btn:last-child{grid-column:1/-1}.water-compact{padding:14px}.water-compact .water-status-pair{flex-direction:column;align-items:flex-start}.water-monitor .sec-h h2{font-size:22px}.water-monitor .sec-h{gap:8px}.water-monitor .water-gauges{grid-template-columns:1fr 1fr}}
+
+/* Five primary destinations and clear manual logging context. */
+.tabs .in{grid-template-columns:repeat(5,minmax(0,1fr))}.tab{font-size:11px;min-height:58px}.nav-choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.nav-choice{font:inherit;text-align:left;cursor:pointer;padding:18px;color:var(--ink);min-height:100px;border:1px solid var(--line)}.nav-choice strong{display:block;font-size:20px;color:var(--brandBg);margin-bottom:7px}.nav-choice span{font-size:14px;line-height:1.5}.log-tank-context{padding:14px;margin-bottom:16px;border-left:4px solid var(--brandBg);background:var(--mint);font-size:18px;font-weight:700;color:var(--brandBg)}.save-notice{padding:14px;border:1px solid var(--green);border-radius:10px;background:var(--mint);display:flex;gap:10px;justify-content:space-between;align-items:center;margin:12px 0}.back-more{margin:12px 0}.nav-choice:focus-visible{outline:3px solid var(--cer);outline-offset:2px}#sheet select,#sheet input:not([type=checkbox]),#sheet button{min-height:44px}#sheetErr{scroll-margin-top:12px} .water-inline-trend select{max-width:100%}
+@media(max-width:400px){.nav-choices{grid-template-columns:1fr}.save-notice{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
@@ -309,7 +313,7 @@ var ICONS={
   feeding:'<path d="M3 11h18a9 9 0 0 1-18 0z"/><path d="M8 7c0-1.5 1-2 1-3M13 7c0-1.5 1-2 1-3"/>',
   schedule:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>'
 };
-var TABS=[['overview','Overview'],['stock','Stock'],['mortality','Deaths'],['water','Water'],['feeding','Feeding'],['schedule','Schedule']];
+var TABS=[['overview','Overview'],['world','Tanks'],['log','Log'],['trends','Trends'],['more','More']];
 
 /* ---------- state ---------- */
 var KEY='noveraAqua.v2';
@@ -669,8 +673,8 @@ function waterCompactCard(t){
  var s=tankWater(t.id),history=S.water.filter(function(w){return w.tank===t.id;}),isOpen=UI.wExpanded===t.id;
  return '<article class="card water-compact"><header><div><h3>'+esc(t.name)+'</h3><p class="sub">'+esc(t.line||'Variant not recorded')+'</p></div></header>'+waterBadges(s)
  +'<div class="water-causes">'+waterReasons(s).map(function(r){return '<p>'+esc(r)+'</p>';}).join('')+'</div><p class="water-stamp">Last measurement: '+esc(worldStamp(s.w))+'</p>'
- +'<div class="water-card-actions"><button class="btn" data-act="water-add" data-tank="'+esc(t.id)+'" aria-label="Log test for '+esc(t.name)+'">Log test</button><button class="btn ghost" data-act="water-focus" data-tank="'+esc(t.id)+'" aria-expanded="'+(UI.wTrend===t.id)+'" aria-label="Trend for '+esc(t.name)+'">'+(UI.wTrend===t.id?'Hide trend':'Trend')+'</button></div>'
- +(UI.wTrend===t.id?waterTankTrend(t):'')
+ +'<div class="water-card-actions"><button class="btn" data-act="water-add" data-tank="'+esc(t.id)+'" aria-label="Log test for '+esc(t.name)+'">Log test</button><button class="btn ghost" data-act="water-focus" data-tank="'+esc(t.id)+'" aria-label="Trend for '+esc(t.name)+'">Trend</button></div>'
+ 
  +'<button class="water-expand btn ghost" data-act="water-expand" data-tank="'+esc(t.id)+'" aria-expanded="'+isOpen+'" aria-controls="water-values-'+esc(t.id)+'">'+(isOpen?'Hide':'Show')+' all parameters &amp; gauges</button>'
  +(isOpen?'<div id="water-values-'+esc(t.id)+'" class="water-gauges">'+orderedWaterItems(s).map(chip).join('')+'</div>':'')
  +'<details class="water-history"><summary>Measurement history · '+history.length+' tests</summary>'+waterHistoryHTML(history)+'</details></article>';
@@ -757,19 +761,28 @@ function viewSchedule(){var start=scheduleWeek(),locked=weekLocked(start),days='
   return '<section><div class="sec-h"><div><h2>Weekly duty roster</h2><p class="sub">'+weekLabel(start)+'</p></div><span class="pill '+(locked?'l2':'l0')+'">'+(locked?'Locked':'Editable')+'</span></div><div class="actions" style="margin-bottom:12px"><button class="btn ghost" data-act="week-prev">← Previous week</button><button class="btn ghost" data-act="week-current">This week</button><button class="btn ghost" data-act="week-next">Next week →</button></div><div class="card" style="margin-bottom:12px"><div class="sec-h"><div><h3>Officer register</h3><p class="sub">'+registeredOfficers().length+' registered officer(s)</p></div><button class="btn sm" data-act="officer-register">+ Register officer</button></div>'+(registeredOfficers().length?'<div class="actions">'+registeredOfficers().map(function(n){return '<span class="pill none">'+esc(n)+'</span>';}).join('')+'</div>':'<p class="sub">Register officers before assigning duty.</p>')+'</div><div class="actions" style="margin-bottom:12px"><button class="btn '+(locked?'':'ghost')+'" data-act="week-lock">'+(locked?'Unlock this week':'Lock / finalise week')+'</button></div>'+days+'</section>';
 }
 
-var VIEWS={overview:viewOverview,stock:viewStock,mortality:viewMortality,water:viewWater,feeding:viewFeeding,setup:viewSetup,schedule:viewSchedule};
+function primaryTab(tab){return ['overview','world','log','trends','more'].indexOf(tab)>=0?tab:'more';}
+function viewLog(){return '<section><h1>Log</h1><p class="sub">Choose what to record, then select a tank.</p><div class="nav-choices">'+[['water-add','Water test','Record full or partial water measurements.'],['feed-add','Feeding','Record food, amount and feeding time.'],['death-add','Deaths','Record deaths and likely cause.'],['stock-pick','Stock change','Add, remove, move or recount shrimp.']].map(function(x){return '<button class="card nav-choice" data-act="'+x[0]+'"><strong>'+x[1]+'</strong><span>'+x[2]+'</span></button>';}).join('')+'</div></section>';}
+function viewMore(){return '<section><h1>More</h1><p class="sub">Monitoring, records and farm settings.</p><div class="nav-choices">'+[['water','Water','Compare conditions, freshness and test history.'],['feeding','Feeding','Feeding plans, logs and two-hour checks.'],['stock','Stock','Counts, movements and stock history.'],['mortality','Deaths','Mortality totals and records.'],['schedule','Schedule','Duty roster and officer register.'],['setup','Settings & backups','Thresholds, farm settings, export and restore.']].map(function(x){return '<button class="card nav-choice" data-act="tab" data-tab="'+x[0]+'"><strong>'+x[1]+'</strong><span>'+x[2]+'</span></button>';}).join('')+'</div></section>';}
+function viewTrends(){var T=activeTanks();if(!T.length)return emptyFarm();if(!T.some(function(t){return t.id===UI.wTank;}))UI.wTank=sortedBySeverity(T)[0].id;var t=tankOf(UI.wTank);return '<section><h1>Trends</h1><p class="sub">Recorded water measurements over the last 30 days.</p>'+tankSel('trendTank',UI.wTank,'Tank')+'<div class="card">'+waterBadges(tankWater(t.id))+waterTankTrend(t)+'<div class="actions"><button class="btn" data-act="water-add" data-tank="'+esc(t.id)+'">Log test for '+esc(t.name)+'</button><button class="btn ghost" data-act="tank-water-history" data-tank="'+esc(t.id)+'">Measurement history</button></div></div></section>';}
+function activeTankId(id){return activeTanks().some(function(t){return t.id===id;});}
+function validateLogContext(fd,requireTime){var id=val(fd,'tank');if(!activeTankId(id))return 'Select an active tank before saving.';var d=val(fd,'date');if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!isFinite(Date.parse(d+'T12:00:00Z'))||new Date(d+'T12:00:00Z').toISOString().slice(0,10)!==d)return 'Choose a valid date for this record.';var tm=val(fd,'time');if((requireTime&&!tm)||(tm&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(tm)))return 'Choose a valid time for this record.';return null;}
+function logTankContext(){var select=$('#f_tank'),box=$('#logTankContext');if(!select||!box)return;box.textContent=activeTankId(select.value)?'Recording for '+tankName(select.value):'Select a tank to start this record.';}
+function manualOfficerFld(){return officerFld().replace('<small><button class="btn ghost sm" type="button" data-act="officer-register">Register officer</button></small>','')+'<label class="fld"><span>New officer name (if not listed)</span><input name="newOfficer" maxlength="60" autocomplete="name"><small>Registered when this record is saved.</small></label>';}
+
+var VIEWS={log:viewLog,trends:viewTrends,more:viewMore,overview:viewOverview,stock:viewStock,mortality:viewMortality,water:viewWater,feeding:viewFeeding,setup:viewSetup,schedule:viewSchedule};
 
 /* ---------- render ---------- */
 function render(){
   refreshCounts();
   var d=new Date();
-  $('#hdr').innerHTML='<div class="brand"><span class="logo" role="img" aria-label="NOVERA AQUA logo"></span><div><p class="eyebrow">'+DOW[d.getDay()]+' '+fmtD(today())+'</p><p class="wm">NOVERA AQUA</p></div></div><button class="btn ghost sm" data-act="tab" data-tab="'+(UI.tab==='setup'?'overview':'setup')+'">'+(UI.tab==='setup'?'Done':'Setup')+'</button>';
+  $('#hdr').innerHTML='<div class="brand"><span class="logo" role="img" aria-label="NOVERA AQUA logo"></span><div><p class="eyebrow">'+DOW[d.getDay()]+' '+fmtD(today())+'</p><p class="wm">NOVERA AQUA</p></div></div><button class="btn ghost sm" data-act="tab" data-tab="'+(UI.tab==='more'?'overview':'more')+'">'+(UI.tab==='more'?'Overview':'More')+'</button>';
   var banner=S.meta.sample?'<div class="banner"><p>You are looking at example data. Clear it, then add your own tanks.</p><button class="btn sm" data-act="clear-all">Clear examples</button></div>':'';
   var mem=memOnly?'<div class="banner"><p>This view cannot save to the browser. Copy a backup from Setup before you leave.</p></div>':'';
   var ft='<footer class="ft"><span class="wm">NOVERA AQUA</span><span>Neocaridina farm log · © '+d.getFullYear()+'</span></footer>';
-  $('#main').innerHTML=banner+mem+VIEWS[UI.tab]()+ft;
+  $('#main').innerHTML=banner+mem+(UI.saveNotice?'<div class="save-notice" role="status"><strong>'+esc(UI.saveNotice)+'</strong><button class="btn ghost sm" data-act="notice-close" aria-label="Dismiss saved confirmation">Dismiss</button></div>':'')+(['stock','mortality','water','feeding','schedule','setup'].indexOf(UI.tab)>=0?'<button class="btn ghost sm back-more" data-act="tab" data-tab="more">← More</button>':'')+VIEWS[UI.tab]()+ft;
   var wb=waterSummary().outOfRange;
-  $('#tabs').innerHTML='<div class="in">'+TABS.map(function(t){return '<button class="tab" data-act="tab" data-tab="'+t[0]+'"'+(UI.tab===t[0]?' aria-current="page"':'')+'><svg viewBox="0 0 24 24" aria-hidden="true">'+ICONS[t[0]]+'</svg>'+t[1]+(t[0]==='water'&&wb?'<span class="badge" aria-label="'+wb+' tanks have out-of-range recorded values">'+wb+'</span>':'')+'</button>';}).join('')+'</div>';
+  $('#tabs').innerHTML='<div class="in">'+TABS.map(function(t){return '<button class="tab" data-act="tab" data-tab="'+t[0]+'"'+(primaryTab(UI.tab)===t[0]?' aria-current="page"':'')+'><svg viewBox="0 0 24 24" aria-hidden="true">'+ICONS[t[0]]+'</svg>'+t[1]+(t[0]==='more'&&wb?'<span class="badge" aria-label="'+wb+' tanks have out-of-range recorded values">'+wb+'</span>':'')+'</button>';}).join('')+'</div>';
 }
 function go(tab){if(!VIEWS[tab])tab='overview';UI.tab=tab;render();window.scrollTo(0,0);}
 
@@ -777,9 +790,9 @@ function go(tab){if(!VIEWS[tab])tab='overview';UI.tab=tab;render();window.scroll
 var sheetFn=null,photoController=null;
 function openSheet(title,body,label,fn){
   if(photoController){photoController.dispose();photoController=null;}
-  sheetFn=fn;
-  $('#panel').innerHTML='<div class="sh-head"><h2>'+esc(title)+'</h2><button class="btn ghost sm" type="button" data-act="sheet-close">Close</button></div><form id="sheetForm" novalidate><div class="err" id="sheetErr" hidden></div>'+body+'<button class="btn" type="submit" style="width:100%">'+esc(label)+'</button></form>';
-  $('#sheet').hidden=false;
+  sheetFn=fn;UI.logTitle=title;
+  $('#panel').innerHTML='<div class="sh-head"><h2>'+esc(title)+'</h2><button class="btn ghost sm" type="button" data-act="sheet-close">Close</button></div><form id="sheetForm" novalidate><div class="err" id="sheetErr" role="alert" hidden></div>'+(body.indexOf('id="f_tank"')>=0?'<div id="logTankContext" class="log-tank-context" aria-live="polite"></div>':'')+body+'<button class="btn" type="submit" style="width:100%">'+esc(label)+'</button></form>';
+  $('#sheet').hidden=false;logTankContext();
 }
 function openStockPick(){
   if(!needTanks())return;sheetFn=null;
@@ -787,7 +800,7 @@ function openStockPick(){
   $('#sheet').hidden=false;
 }
 function closeSheet(){if(photoController){photoController.dispose();photoController=null;}$('#sheet').hidden=true;sheetFn=null;}
-function tankSel(name,sel,label){var T=activeTanks();return '<label class="fld"><span>'+label+'</span><select name="'+name+'" id="f_'+name+'">'+T.map(function(t){return '<option value="'+t.id+'"'+(t.id===sel?' selected':'')+'>'+esc(t.name)+' · '+esc(t.line)+'</option>';}).join('')+'</select></label>';}
+function tankSel(name,sel,label){var T=activeTanks();return '<label class="fld"><span>'+label+'</span><select name="'+name+'" id="f_'+name+'" required><option value=""'+(!sel?' selected':'')+'>— Select a tank —</option>'+T.map(function(t){return '<option value="'+t.id+'"'+(t.id===sel?' selected':'')+'>'+esc(t.name)+' · '+esc(t.line)+'</option>';}).join('')+'</select></label>';}
 function needTanks(){if(!activeTanks().length){toast('Add a tank first.');return false;}return true;}
 var val=function(fd,k){return String(fd.get(k)==null?'':fd.get(k)).trim();};
 function registeredOfficers(){
@@ -797,19 +810,21 @@ function registeredOfficers(){
 }
 function officerOptions(selected,allowBlank){var names=registeredOfficers();return (allowBlank?'<option value="">— Select officer —</option>':'')+names.map(function(n){return '<option value="'+esc(n)+'"'+(n===selected?' selected':'')+'>'+esc(n)+'</option>';}).join('');}
 function officerFld(){var names=registeredOfficers();return '<label class="fld"><span>Officer name</span><select name="officer" id="f_officer"><option value="">— Select officer —</option>'+names.map(function(n){return '<option value="'+esc(n)+'"'+(n===(S.meta&&S.meta.officer)?' selected':'')+'>'+esc(n)+'</option>';}).join('')+'</select><small><button class="btn ghost sm" type="button" data-act="officer-register">Register officer</button></small></label>';}
-function takeOfficer(fd){var o=val(fd,'officer');if(o){S.meta=S.meta||{};S.meta.officer=o;}return o;}
+function takeOfficer(fd){var o=val(fd,'newOfficer').replace(/\s+/g,' ')||val(fd,'officer');if(o){S.meta=S.meta||{};S.meta.officer=o;S.officers=S.officers||[];if(!S.officers.some(function(n){return n.toLowerCase()===o.toLowerCase();}))S.officers.push(o);}return o;}
 var offTxt=function(e){return e.officer?' · by '+esc(e.officer):'';};
 
 function openStock(kind,tankId){
-  if(!needTanks())return;var T=activeTanks(),sel=tankId||T[0].id;
+  if(!needTanks())return;var T=activeTanks(),sel=activeTankId(tankId)?tankId:'';
   var title={add:'Add stock',sell:'Sold or removed',move:'Move shrimp',count:'Recount a tank'}[kind];
-  var other=(T.filter(function(t){return t.id!==sel;})[0]||T[0]).id;
+  var other='';
   var body='<label class="fld"><span>Date</span><input type="date" name="date" id="f_date" value="'+today()+'"></label>'+tankSel('tank',sel,kind==='move'?'From tank':'Tank')+(kind==='move'?tankSel('to',other,'To tank'):'')
    +'<label class="fld"><span>'+(kind==='count'?'Shrimp counted':'Number of shrimp')+'</span><input type="number" name="qty" id="f_qty" min="0" step="1" inputmode="numeric" placeholder="0"></label>'
-   +officerFld()+'<label class="fld"><span>Note (optional)</span><input type="text" name="note" id="f_note" maxlength="120" placeholder="'+{add:'Hatched, bought from…',sell:'Buyer or reason',move:'Reason for move',count:'Recount note'}[kind]+'"></label>';
+   +manualOfficerFld()+'<label class="fld"><span>Note (optional)</span><input type="text" name="note" id="f_note" maxlength="120" placeholder="'+{add:'Hatched, bought from…',sell:'Buyer or reason',move:'Reason for move',count:'Recount note'}[kind]+'"></label>';
   openSheet(title,body,'Save',function(fd){
-    var tank=val(fd,'tank'),qty=parseInt(val(fd,'qty'),10),date=val(fd,'date')||today();
-    if(!isFinite(qty)||qty<0||(kind!=='count'&&qty<1))return 'Enter a whole number of shrimp.';
+    var contextError=validateLogContext(fd,false);if(contextError)return contextError;
+    if(kind==='move'&&!activeTankId(val(fd,'to')))return 'Select a destination tank.';
+    var tank=val(fd,'tank'),qty=val(fd,'qty')===''?NaN:Number(val(fd,'qty')),date=val(fd,'date')||today();
+    if(!Number.isInteger(qty)||qty<0||(kind!=='count'&&qty<1))return 'Enter a whole number of shrimp.';
     if((kind==='sell'||kind==='move')&&qty>cnt(tank))return tankName(tank)+' has '+fmtN(cnt(tank))+' shrimp on record.';
     if(kind==='move'&&val(fd,'to')===tank)return 'Pick a different tank to move to.';
     var officer=takeOfficer(fd);if(!officer)return 'Enter the officer name.';
@@ -819,13 +834,14 @@ function openStock(kind,tankId){
 }
 function openDeath(tankId){
   if(!needTanks())return;var T=activeTanks();
-  var body='<label class="fld"><span>Date</span><input type="date" name="date" id="f_date" value="'+today()+'"></label>'+tankSel('tank',tankId||T[0].id,'Tank')
+  var body='<label class="fld"><span>Date</span><input type="date" name="date" id="f_date" value="'+today()+'"></label>'+tankSel('tank',(activeTankId(tankId)?tankId:''),'Tank')
    +'<label class="fld"><span>Number of deaths</span><input type="number" name="qty" id="f_qty" min="1" step="1" inputmode="numeric" value="1"></label>'
    +'<label class="fld"><span>Likely cause</span><select name="cause" id="f_cause">'+CAUSES.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></label>'
-   +officerFld()+'<label class="fld"><span>Note (optional)</span><input type="text" name="note" id="f_note" maxlength="120"></label>';
+   +manualOfficerFld()+'<label class="fld"><span>Note (optional)</span><input type="text" name="note" id="f_note" maxlength="120"></label>';
   openSheet('Log deaths',body,'Save',function(fd){
-    var tank=val(fd,'tank'),qty=parseInt(val(fd,'qty'),10);
-    if(!isFinite(qty)||qty<1)return 'Enter at least 1.';
+    var contextError=validateLogContext(fd,false);if(contextError)return contextError;
+    var tank=val(fd,'tank'),qty=val(fd,'qty')===''?NaN:Number(val(fd,'qty'));
+    if(!Number.isInteger(qty)||qty<1)return 'Enter at least 1.';
     if(qty>cnt(tank))return tankName(tank)+' has '+fmtN(cnt(tank))+' shrimp on record. Recount the tank first if this is wrong.';
     var officer=takeOfficer(fd);if(!officer)return 'Enter the officer name.';
     S.ledger.push({id:nid('l'),date:val(fd,'date')||today(),tank:tank,kind:'death',qty:qty,cause:val(fd,'cause'),officer:officer,note:val(fd,'note')});commit();toast('Logged '+qty+' death'+(qty>1?'s':'')+' in '+tankName(tank)+'.');
@@ -833,12 +849,13 @@ function openDeath(tankId){
 }
 function openWater(tankId){
   if(!needTanks())return;var T=activeTanks();
-  var body='<div class="grid2"><label class="fld"><span>Date</span><input type="date" name="date" id="f_date" value="'+today()+'"></label>'+tankSel('tank',tankId||T[0].id,'Tank')+'</div><div data-photo-host></div><div class="grid2">'
+  var body='<div class="grid2"><label class="fld"><span>Measurement date</span><input type="date" name="date" id="f_date" value="'+today()+'"></label>'+tankSel('tank',(activeTankId(tankId)?tankId:''),'Tank')+'</div><label class="fld"><span>Measurement time</span><input type="time" name="time" value="'+nowHM()+'"><small>Date and time default to now. Set when this measurement was actually taken.</small></label><p class="sub">Partial tests are allowed. Leave unmeasured parameters blank; blank values are not zero.</p><div data-photo-host></div><div class="grid2">'
    +PARAMS.map(function(p){return '<label class="fld"><span>'+p.label+(p.unit?' ('+p.unit+')':'')+'</span><input type="number" step="any" inputmode="decimal" name="'+p.k+'" id="f_'+p.k+'" placeholder="—"><small>Optimal '+rangeTxt(p.k)+'</small></label>';}).join('')
-   +'</div><label class="fld"><span>Measurement time</span><input type="time" name="time" value="'+nowHM()+'"><small>Date and time default to now. Set when this measurement was actually taken.</small></label><label class="photo-review-confirm"><input type="checkbox" data-measurement-confirm> I confirm the measurement date, time and selected tank.</label>'+officerFld().replace('<small><button class="btn ghost sm" type="button" data-act="officer-register">Register officer</button></small>','')+'<label class="fld"><span>New officer name (if not listed)</span><input name="newOfficer" maxlength="60" autocomplete="name"><small>A new name is registered when you save this test.</small></label>'+'<label class="fld"><span>Note (optional)</span><textarea name="note" id="f_note" maxlength="2000" rows="3"></textarea></label>';
+   +'</div><label class="photo-review-confirm"><input type="checkbox" data-measurement-confirm> I confirm the measurement date, time and selected tank.</label>'+officerFld().replace('<small><button class="btn ghost sm" type="button" data-act="officer-register">Register officer</button></small>','')+'<label class="fld"><span>New officer name (if not listed)</span><input name="newOfficer" maxlength="60" autocomplete="name"><small>A new name is registered when you save this test.</small></label>'+'<label class="fld"><span>Note (optional)</span><textarea name="note" id="f_note" maxlength="2000" rows="3"></textarea></label>';
   var saved=false;
   openSheet('Log water test',body,'Save test',function(fd){
     if(saved)return 'This test has already been saved.';
+    var contextError=validateLogContext(fd,true);if(contextError)return contextError;
     if(photoController){var photoError=photoController.validate();if(photoError)return photoError;}
     if(!/^\d{4}-\d{2}-\d{2}$/.test(val(fd,'date')))return 'Choose the measurement date.';
     if(val(fd,'time')&&!/^\d{2}:\d{2}$/.test(val(fd,'time')))return 'Check the measurement time.';
@@ -855,24 +872,25 @@ function openWater(tankId){
   else{var ph=$('[data-photo-host]');if(ph)ph.textContent='Photo tools unavailable. You can still enter readings manually.';}
 }
 function openFeed(tankId){
-  if(!needTanks())return;var T=activeTanks(),sel=tankId||T[0].id;
+  if(!needTanks())return;var T=activeTanks(),sel=activeTankId(tankId)?tankId:'';
   var foods=['Pellets','Powder / fry food','Spirulina','Blanched spinach','Catappa leaf','Biofilm booster'];S.feed.forEach(function(e){if(e.food&&foods.indexOf(e.food)<0)foods.push(e.food);});
   var body='<div id="fHint" class="hintbox"></div><div class="grid2"><label class="fld"><span>Date</span><input type="date" name="date" id="f_date" value="'+today()+'"></label><label class="fld"><span>Time</span><input type="time" name="time" id="f_time" value="'+nowHM()+'"></label></div>'+tankSel('tank',sel,'Tank')
    +'<label class="fld"><span>Food</span><input type="text" name="food" id="f_food" list="foodList" value="'+esc(foods[0])+'" maxlength="40"><datalist id="foodList">'+foods.map(function(f){return '<option value="'+esc(f)+'">';}).join('')+'</datalist></label>'
    +'<div class="grid2"><label class="fld"><span>Amount</span><input type="number" name="amt" id="f_amt" step="any" min="0" inputmode="decimal" data-auto="1"></label>'
    +'<label class="fld"><span>Unit</span><select name="unit" id="f_unit"><option value="mg">mg</option><option value="g">g</option></select></label></div>'
    +'<label class="fld"><span>Eaten within 2 hours?</span><select name="res" id="f_res"><option value="pending">Not checked yet</option><option value="eaten">Yes, eaten within 2 hours</option><option value="left">No, food left after 2 hours</option></select><small>Leave it unchecked now and mark the result from the feeding log after 2 hours.</small></label>'
-   +officerFld()+'<label class="fld"><span>Note (optional)</span><input type="text" name="note" id="f_note" maxlength="120"></label>';
+   +manualOfficerFld()+'<label class="fld"><span>Note (optional)</span><input type="text" name="note" id="f_note" maxlength="120"></label>';
   openSheet('Log feeding',body,'Save feeding',function(fd){
+    var contextError=validateLogContext(fd,true);if(contextError)return contextError;
     var amt=parseFloat(val(fd,'amt'));if(!isFinite(amt)||amt<=0)return 'Enter the amount fed.';
     var g=val(fd,'unit')==='mg'?amt/1000:amt,res=val(fd,'res'),tank=val(fd,'tank');
     var officer=takeOfficer(fd);if(!officer)return 'Enter the officer name.';
     S.feed.push({id:nid('f'),date:val(fd,'date')||today(),time:val(fd,'time')||nowHM(),tank:tank,food:val(fd,'food'),g:g,res:res,officer:officer,note:val(fd,'note')});
     commit();toast(res==='left'?'Logged. Remove the leftover food from '+tankName(tank)+'.':'Logged '+fmtG(g)+' for '+tankName(tank)+'.');
   });
-  var upd=function(){var id=$('#f_tank').value,t=tankOf(id),p=feedPlan(t),ai=$('#f_amt');
+  var upd=function(){var id=$('#f_tank').value,ai=$('#f_amt');if(!activeTankId(id)){$('#fHint').textContent='Select a tank to see its feeding suggestion.';if(ai.dataset.auto==='1')ai.value='';return;}var t=tankOf(id),p=feedPlan(t);
     $('#fHint').textContent=p.n>0?'Suggested for '+t.name+': '+fmtG(p.per)+' per feeding, '+fmtG(p.day)+' today at '+fmtPct(p.pct)+(p.notes.length?' ('+p.notes.join('; ')+')':'')+'. Fed so far: '+fmtG(sumG(fedOn(id,today())))+'.':t.name+' has no shrimp on record.';
-    if(ai.dataset.auto==='1'&&p.per>0){var useG=p.per>=1;$('#f_unit').value=useG?'g':'mg';ai.value=rd(useG?p.per:p.per*1000);}};
+    if(ai.dataset.auto==='1'&&p.per<=0)ai.value='';if(ai.dataset.auto==='1'&&p.per>0){var useG=p.per>=1;$('#f_unit').value=useG?'g':'mg';ai.value=rd(useG?p.per:p.per*1000);}};
   $('#f_tank').addEventListener('change',upd);
   $('#f_amt').addEventListener('input',function(){this.dataset.auto='0';});
   $('#f_unit').addEventListener('change',function(){var a=$('#f_amt'),v=parseFloat(a.value);if(isFinite(v))a.value=rd(this.value==='g'?v/1000:v*1000);});
@@ -972,7 +990,9 @@ document.addEventListener('click',function(e){
     case 'rate-x100':S.settings.feedA=+(S.settings.feedA*100).toFixed(4);S.settings.feedB=+(S.settings.feedB*100).toFixed(4);commit();toast('Rates are now '+fmtPct(S.settings.feedA)+' and '+fmtPct(S.settings.feedB)+'.');break;
     case 'water-filter':UI.wFilter=d.filter;UI.wOnly=false;render();break;
     case 'water-expand':UI.wExpanded=UI.wExpanded===d.tank?null:d.tank;render();break;
-    case 'water-focus':UI.wTank=d.tank;UI.wTrend=UI.wTrend===d.tank?null:d.tank;render();break;
+    case 'water-focus':UI.wTank=d.tank;go('trends');break;
+    case 'tank-water-history':UI.wTank=d.tank;UI.wFilter='all';UI.wOnly=false;go('water');var card=Array.from(document.querySelectorAll('.water-compact')).find(function(c){var b=c.querySelector('[data-tank]');return b&&b.dataset.tank===d.tank;});if(card){var hist=card.querySelector('.water-history');hist.open=true;hist.scrollIntoView({block:'start'});}break;
+    case 'notice-close':UI.saveNotice=null;render();break;
     case 'del':armed(el,function(){delEntry(d.kind,d.id);});break;
     case 'tank-retire':var t=tankOf(d.id);if(t){t.active=false;closeSheet();commit();toast(t.name+' retired. Its records are kept.');}break;
     case 'tank-react':var r=tankOf(d.id);if(r){r.active=true;commit();toast(r.name+' is active again.');}break;
@@ -994,6 +1014,8 @@ function restore(){
   }catch(x){er.textContent='That text is not a valid backup. Paste the full text from Copy backup.';er.hidden=false;var b=$('[data-act="restore"]');if(b){delete b.dataset.armed;b.textContent='Restore backup';b.classList.remove('armed');}}
 }
 document.addEventListener('change',function(e){
+  if(e.target.id==='f_tank')logTankContext();
+  if(e.target.name==='trendTank'){UI.wTank=e.target.value;render();return;}
   var t=e.target;
   if(t.dataset.ui){UI[t.dataset.ui]=t.type==='checkbox'?t.checked:t.value;render();return;}
   if(t.dataset.range){
@@ -1009,8 +1031,8 @@ document.addEventListener('change',function(e){
 });
 document.addEventListener('submit',function(e){
   if(e.target.id!=='sheetForm')return;e.preventDefault();if(!sheetFn)return;
-  var err=sheetFn(new FormData(e.target));
-  if(err){var b=$('#sheetErr');b.textContent=err;b.hidden=false;b.scrollIntoView({block:'nearest'});}else closeSheet();
+  var fd=new FormData(e.target),recordTank=val(fd,'tank'),recordTitle=UI.logTitle,err=sheetFn(fd);
+  if(err){var b=$('#sheetErr');b.textContent=err;b.hidden=false;b.scrollIntoView({block:'nearest'});}else{closeSheet();if(activeTankId(recordTank)){UI.saveNotice='Saved: '+recordTitle+' · '+tankName(recordTank)+'.';render();toast(UI.saveNotice);}}
 });
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet();});
 
@@ -1018,7 +1040,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('#sheet'
 function initializeTankRates(){S.tanks.forEach(function(t){if(t.feedOpt!=='a'&&t.feedOpt!=='b')t.feedOpt=tankFeedOpt(t);});}
 /* Tank World: presentation over the existing ledger; no separate database. */
 ICONS.world='<rect x="2" y="5" width="20" height="15" rx="2"/><path d="M2 9q5-3 10 0t10 0M7 20v-5m10 5v-7"/>';
-TABS.splice(1,0,['world','Tank World']);
+ICONS.log='<path d="M12 5v14M5 12h14"/>';ICONS.trends='<path d="M4 4v16h16M6 15l4-5 4 3 6-8"/>';ICONS.more='<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>';
 VIEWS.world=viewWorld;
 function waterSource(w){return w&&w.entryMethod==='photo-ocr'?'Photo-assisted entry · confirmed by '+(w.officer||'officer'):'Manually recorded measurement';}
 function worldStamp(w){return w?String(w.date)+(w.time?' '+w.time:' (time not recorded)'):'No saved measurement';}
@@ -1071,7 +1093,7 @@ function viewWorld(){
  +(!tanks.length?emptyFarm():'')+(selected?worldDetail(selected,worldHealth(selected)):'<p class="tw-prompt">Open tank details for history and management.</p>')+'</section>';
 }
 function worldDetail(t,h){var p=worldPopulation(t),w=h.tw.w,history=S.water.filter(function(x){return x.tank===t.id;}).sort(byDateDesc).slice(0,5);
- return '<article class="card tw-detail" id="tw-detail" tabindex="-1"><p class="eyebrow">Tank details</p><h2>'+esc(t.name)+'</h2><p class="sub">'+esc(t.stage||'Stage not recorded')+' · '+(t.vol?esc(t.vol)+' L':'Volume not recorded')+' · Dimensions not recorded</p>'+(S.settings.worldView==='illustrated'?'<div class="tw-scene">'+worldAquarium(t,true)+'</div>':'')+'<strong class="tw-count">'+worldPopText(p)+'</strong><div class="tw-variants">'+worldVariants(p)+'</div><div class="actions"><button class="btn" data-act="water-add" data-tank="'+esc(t.id)+'">Log water test</button><button class="btn ghost" data-act="stock" data-kind="count" data-tank="'+esc(t.id)+'">Update stock</button></div><details class="world-settings"><summary>Tank settings &amp; appearance</summary><div class="actions"><button class="btn ghost" data-act="tank-edit" data-id="'+esc(t.id)+'">Manage tank</button><button class="btn ghost" data-act="world-variants" data-id="'+esc(t.id)+'">Variant counts</button></div><label class="tw-toolbar">Visual environment <select data-world-decor="'+esc(t.id)+'">'+[['planted','Moss & rocks'],['wood','Driftwood garden'],['minimal','Breeding tank'],['sand','Sand garden']].map(function(a){return '<option value="'+a[0]+'" '+((t.worldDecor||'planted')===a[0]?'selected':'')+'>'+a[1]+'</option>';}).join('')+'</select><small>Appearance only; does not change husbandry records.</small></label></details><h3>Monitoring</h3>'+waterBadges(h.tw)+'<p class="sub">'+(w&&w.entryMethod==='photo-ocr'?esc(waterSource(w)):(S.meta.sample?'Simulated demonstration data':'Cached, manually recorded measurements'))+' · '+esc(worldStamp(w))+'</p>'+(h.reasons.length?'<ul class="tw-warnings">'+h.reasons.map(function(r){return '<li>'+esc(r)+'</li>';}).join('')+'</ul>':'<p>All required readings are within configured targets and freshness limits.</p>')+'<div class="tw-parameters">'+orderedWaterItems(h.tw).map(function(i){var q=i.p,v=w&&w[q.k];return '<div><span class="sub">'+q.label+'</span><strong>'+fmtV(q,v)+' <small>'+q.unit+'</small></strong><span>'+(i&&i.j?(i.j.lvl>0?esc(readingCause(i)):(h.tw.overdue?'Within range when last tested':'Within configured range')):'Missing — not recorded')+'</span><small>Target '+rangeTxt(q.k)+'</small></div>';}).join('')+'</div><h3>30-day history</h3><label>Parameter <select data-ui="worldParam">'+PARAMS.map(function(q){return '<option value="'+q.k+'" '+((UI.worldParam||'ph')===q.k?'selected':'')+'>'+q.label+'</option>';}).join('')+'</select></label>'+waterChart(t.id,UI.worldParam||'ph')+'<h3>Recent tests</h3>'+(history.length?history.map(function(x){return '<p class="sub">'+esc(worldStamp(x))+' · '+esc(waterSource(x))+' · '+esc(x.note||'Water test')+'</p>';}).join(''):'<p class="sub">No tests saved.</p>')+'<h3>Active husbandry alerts</h3>'+worldActiveAlerts(t)+'<h3>Water changes</h3><p class="sub">The existing app has no completed water-change log. Scheduled tasks are available in Schedule; they are not proof of a water change.</p><button class="btn ghost sm" data-act="tab" data-tab="schedule">Open schedule</button></article>';
+ return '<article class="card tw-detail" id="tw-detail" tabindex="-1"><p class="eyebrow">Tank details</p><h2>'+esc(t.name)+'</h2><p class="sub">'+esc(t.stage||'Stage not recorded')+' · '+(t.vol?esc(t.vol)+' L':'Volume not recorded')+' · Dimensions not recorded</p>'+(S.settings.worldView==='illustrated'?'<div class="tw-scene">'+worldAquarium(t,true)+'</div>':'')+'<strong class="tw-count">'+worldPopText(p)+'</strong><div class="tw-variants">'+worldVariants(p)+'</div><div class="actions"><button class="btn" data-act="water-add" data-tank="'+esc(t.id)+'">Log water test</button><button class="btn ghost" data-act="stock" data-kind="count" data-tank="'+esc(t.id)+'">Update stock</button></div><details class="world-settings"><summary>Tank settings &amp; appearance</summary><div class="actions"><button class="btn ghost" data-act="tank-edit" data-id="'+esc(t.id)+'">Manage tank</button><button class="btn ghost" data-act="world-variants" data-id="'+esc(t.id)+'">Variant counts</button></div><label class="tw-toolbar">Visual environment <select data-world-decor="'+esc(t.id)+'">'+[['planted','Moss & rocks'],['wood','Driftwood garden'],['minimal','Breeding tank'],['sand','Sand garden']].map(function(a){return '<option value="'+a[0]+'" '+((t.worldDecor||'planted')===a[0]?'selected':'')+'>'+a[1]+'</option>';}).join('')+'</select><small>Appearance only; does not change husbandry records.</small></label></details><h3>Monitoring</h3>'+waterBadges(h.tw)+'<p class="sub">'+(w&&w.entryMethod==='photo-ocr'?esc(waterSource(w)):(S.meta.sample?'Simulated demonstration data':'Cached, manually recorded measurements'))+' · '+esc(worldStamp(w))+'</p>'+(h.reasons.length?'<ul class="tw-warnings">'+h.reasons.map(function(r){return '<li>'+esc(r)+'</li>';}).join('')+'</ul>':'<p>All required readings are within configured targets and freshness limits.</p>')+'<div class="tw-parameters">'+orderedWaterItems(h.tw).map(function(i){var q=i.p,v=w&&w[q.k];return '<div><span class="sub">'+q.label+'</span><strong>'+fmtV(q,v)+' <small>'+q.unit+'</small></strong><span>'+(i&&i.j?(i.j.lvl>0?esc(readingCause(i)):(h.tw.overdue?'Within range when last tested':'Within configured range')):'Missing — not recorded')+'</span><small>Target '+rangeTxt(q.k)+'</small></div>';}).join('')+'</div><button class="btn ghost" data-act="water-focus" data-tank="'+esc(t.id)+'">View trends for '+esc(t.name)+'</button><h3>Recent tests</h3>'+(history.length?history.map(function(x){return '<p class="sub">'+esc(worldStamp(x))+' · '+esc(waterSource(x))+' · '+esc(x.note||'Water test')+'</p>';}).join(''):'<p class="sub">No tests saved.</p>')+'<h3>Active husbandry alerts</h3>'+worldActiveAlerts(t)+'<h3>Water changes</h3><p class="sub">The existing app has no completed water-change log. Scheduled tasks are available in Schedule; they are not proof of a water change.</p><button class="btn ghost sm" data-act="tab" data-tab="schedule">Open schedule</button></article>';
 }
 
 function worldActiveAlerts(t){var messages=alerts().filter(function(a){return a.t===t.name;}).map(function(a){return a.tx+(a.sub?' — '+a.sub:'');});if(cnt(t.id)>0&&!fedOn(t.id,today()).length)messages.push('No feeding recorded today.');if(pendingChecks().some(function(x){return x.e.tank===t.id&&x.overdue;}))messages.push('Feeding two-hour check is overdue.');return messages.length?'<ul>'+messages.map(function(m){return '<li>'+esc(m)+'</li>';}).join('')+'</ul>':'<p class="sub">No additional husbandry alerts.</p>';}
@@ -1092,6 +1114,7 @@ render();
 </script>
 </body>
 </html>
+
 
 
 
