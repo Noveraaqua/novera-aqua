@@ -7,6 +7,7 @@
 <link rel="apple-touch-icon" href="./favicon.png">
 <meta name="theme-color" content="#1D3557">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+
 </style>
 <title>NOVERA AQUA</title>
 <link rel="stylesheet" href="./assets/ocr.css?v=20261026-1">
@@ -222,6 +223,9 @@ textarea.bk{width:100%;min-height:110px;font:12px/1.4 ui-monospace,Menlo,Consola
 .daily-heading{margin:18px 0 14px}.daily-heading h1{font:700 25px var(--display);margin:0 0 4px}.daily-overview section{margin-top:16px}.daily-urgent .al-list{grid-template-columns:1fr}.more-alerts,.routine-readings,.world-settings{margin-top:10px}.more-alerts summary,.routine-readings summary,.world-settings summary{padding:12px 0;font-weight:600;cursor:pointer;font-size:13px;min-height:44px}.daily-tiles .v{font-size:27px}.daily-tank-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.daily-tank{padding:14px;overflow-wrap:anywhere}.daily-tank .tw-card-head{align-items:flex-start}.daily-tank h3{font:700 20px var(--display);margin:0 0 4px}.daily-stock{text-align:right;flex-shrink:0;display:flex;flex-direction:column;font-size:10px;color:var(--muted)}.daily-stock strong{font-size:23px;color:var(--ink)}.daily-stamp{font-size:12px;color:var(--muted);margin-top:10px}.daily-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.daily-card-actions .btn{min-height:44px;padding:10px 6px;white-space:normal}.daily-tank .tw-aquarium,.tw-detail .tw-aquarium{width:100%}.daily-tank .water-causes:empty{display:none}.world-view-controls{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center}.world-view-controls .seg button{min-height:44px}.world-view-controls .chk{min-height:44px;margin:0}.world-settings{border:1px solid var(--line);padding:0 12px;border-radius:10px;background:var(--surface)}.world-settings .tw-toolbar{margin:8px 0 14px}.illustration-note{font-size:11px}.tw-compact{gap:12px}.tw-heading h1{font-size:25px}.daily-log .quick{grid-template-columns:repeat(4,minmax(0,1fr))}.daily-log .btn{min-height:44px}.daily-tiles{margin-top:16px}.daily-tank .tw-readings{border:0}.tw-detail{min-width:0;overflow-wrap:anywhere}
 @media(max-width:360px){.wm{font-size:13px;letter-spacing:1px}.brand{gap:7px}}
 @media(max-width:600px){.daily-tank-grid,.tw-grid{grid-template-columns:1fr;gap:12px}.daily-log .quick{grid-template-columns:1fr 1fr;gap:8px}.daily-tiles{grid-template-columns:1fr 1fr;gap:8px}.daily-tiles .tile{padding:12px}.daily-tiles .eyebrow{font-size:10px}.daily-tiles .v{font-size:25px}.daily-heading{margin-top:14px}.world-view-controls{gap:8px}.tw-heading{gap:8px}.tw-heading .btn{min-height:44px}.daily-tank .water-status-pair{flex-direction:column;align-items:flex-start}.daily-tank .water-causes{font-size:13px}.water-summary{font-size:13px}.water-summary .sub{font-size:11px}.tw-detail .actions .btn{min-height:44px}.daily-tank .pill{line-height:1.45}.world-settings input[type=number]{min-height:44px}}
+/* Compact Water monitoring: detailed readings remain user-opened. */
+.water-filters{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 8px}.water-filters .btn{min-height:44px;white-space:normal;text-align:left}.water-filters [aria-pressed=true]{background:var(--brandBg);color:#fff;border-color:var(--brandBg)}.water-filter-help{margin-bottom:10px}.water-summary-details summary{cursor:pointer;padding:12px 0;min-height:44px;font-size:13px;font-weight:600}.water-compact-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;margin-top:10px}.water-compact{padding:16px;min-width:0;overflow-wrap:anywhere}.water-compact h3{font-size:21px;margin:0 0 4px}.water-compact header{margin-bottom:10px}.water-compact .water-causes p{font-size:14px;margin:8px 0;line-height:1.5}.water-stamp{font-size:12px;color:var(--muted);margin:12px 0}.water-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.water-card-actions .btn,.water-expand{min-height:44px}.water-expand{width:100%;margin-top:10px;white-space:normal}.water-history summary{cursor:pointer;min-height:44px;padding:14px 0;font-weight:600;font-size:13px}.water-inline-trend{margin:14px 0;padding-top:12px;border-top:1px solid var(--line)}.water-inline-trend h4{margin:0 0 10px}.water-inline-trend .fld{max-width:100%}.water-history-entry{border-top:1px solid var(--line);padding:12px 0}.water-history-entry h4{margin:0 0 8px}.water-history-entry dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}.water-history-entry dl>div{padding:8px;background:var(--bg);border-radius:6px}.water-history-entry dt{font-size:12px}.water-history-entry dd{margin:3px 0 0;font-weight:600;font-size:13px}.water-all-history{margin-top:18px}.water-compact .water-gauges{margin-top:12px}.water-compact .water-status-pair{flex-wrap:wrap}.water-monitor .sec-h{align-items:flex-start}.water-monitor .sec-h>.btn{flex-shrink:0}
+@media(max-width:600px){.water-compact-grid{grid-template-columns:1fr}.water-filters{display:grid;grid-template-columns:1fr 1fr}.water-filters .btn:last-child{grid-column:1/-1}.water-compact{padding:14px}.water-compact .water-status-pair{flex-direction:column;align-items:flex-start}.water-monitor .sec-h h2{font-size:22px}.water-monitor .sec-h{gap:8px}.water-monitor .water-gauges{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -652,28 +656,33 @@ function viewMortality(){
   return h;
 }
 
+function waterFilterMatch(t,mode){
+ var s=tankWater(t.id);return mode==='range'?s.outOfRange:mode==='freshness'?(s.overdue||s.invalidDate||s.freshness==='missing'||s.freshness==='partial'):mode==='attention'?s.needsAttention:true;
+}
+function waterHistoryHTML(hist){
+ return hist.length?'<div class="water-history-list">'+hist.slice().sort(byDateDesc).map(function(w){return '<article class="water-history-entry"><h4>'+esc(tankName(w.tank))+' · '+esc(worldStamp(w))+'</h4><p class="sub">'+esc(waterSource(w))+' · Officer: '+esc(w.officer||'Not recorded')+'</p><dl>'+PARAMS.map(function(p){var j=judge(p.k,w[p.k]);return '<div><dt>'+p.label+'</dt><dd>'+fmtV(p,w[p.k])+' '+esc(p.unit||'(unitless)')+(j&&j.lvl?' · '+esc(j.dir):'')+'</dd></div>';}).join('')+'</dl>'+(w.note?'<p>'+esc(w.note)+'</p>':'')+'<button class="btn danger sm" data-act="del" data-kind="water" data-id="'+esc(w.id)+'">Delete test</button></article>';}).join('')+'</div>':'<p class="sub">No water tests logged.</p>';
+}
+function waterTankTrend(t){
+ var pk=UI.wParam||'ph';return '<div class="water-inline-trend" id="trend" tabindex="-1"><h4>'+esc(t.name)+' · 30-day trend</h4><label class="fld"><span>Parameter and unit</span><select data-ui="wParam">'+PARAMS.map(function(p){return '<option value="'+p.k+'"'+(pk===p.k?' selected':'')+'>'+p.label+' ('+esc(p.unit||'unitless')+')</option>';}).join('')+'</select></label>'+waterChart(t.id,pk)+'<p class="sub">Configured target: '+rangeTxt(pk)+'. Missing readings are excluded.</p></div>';
+}
+function waterCompactCard(t){
+ var s=tankWater(t.id),history=S.water.filter(function(w){return w.tank===t.id;}),isOpen=UI.wExpanded===t.id;
+ return '<article class="card water-compact"><header><div><h3>'+esc(t.name)+'</h3><p class="sub">'+esc(t.line||'Variant not recorded')+'</p></div></header>'+waterBadges(s)
+ +'<div class="water-causes">'+waterReasons(s).map(function(r){return '<p>'+esc(r)+'</p>';}).join('')+'</div><p class="water-stamp">Last measurement: '+esc(worldStamp(s.w))+'</p>'
+ +'<div class="water-card-actions"><button class="btn" data-act="water-add" data-tank="'+esc(t.id)+'" aria-label="Log test for '+esc(t.name)+'">Log test</button><button class="btn ghost" data-act="water-focus" data-tank="'+esc(t.id)+'" aria-expanded="'+(UI.wTrend===t.id)+'" aria-label="Trend for '+esc(t.name)+'">'+(UI.wTrend===t.id?'Hide trend':'Trend')+'</button></div>'
+ +(UI.wTrend===t.id?waterTankTrend(t):'')
+ +'<button class="water-expand btn ghost" data-act="water-expand" data-tank="'+esc(t.id)+'" aria-expanded="'+isOpen+'" aria-controls="water-values-'+esc(t.id)+'">'+(isOpen?'Hide':'Show')+' all parameters &amp; gauges</button>'
+ +(isOpen?'<div id="water-values-'+esc(t.id)+'" class="water-gauges">'+orderedWaterItems(s).map(chip).join('')+'</div>':'')
+ +'<details class="water-history"><summary>Measurement history · '+history.length+' tests</summary>'+waterHistoryHTML(history)+'</details></article>';
+}
 function viewWater(){
-  var T=activeTanks();if(!T.length)return emptyFarm();
-  if(!UI.wTank||!T.some(function(t){return t.id===UI.wTank;})){var sv=sortedBySeverity(T);UI.wTank=sv[0].id;}
-  var bad=waterSummary().outOfRange;
-  var list=sortedBySeverity(T).filter(function(t){return !UI.wOnly||tankWater(t.id).needsAttention;});
-  var h='<section><div class="sec-h"><h2>Water quickview</h2><button class="btn" data-act="water-add">Log test</button></div>'
-   +waterSummaryHTML()
-   +'<div class="legend" style="margin-bottom:10px"><span>'+pill(0)+' inside optimal</span><span>'+pill(1)+' outside target or pH unstable</span><span>'+pill(2)+' outside safe limits</span><span>▲ above · ▼ below · ↕ pH unstable</span></div>'
-   +'<label class="chk" style="margin-bottom:10px"><input type="checkbox" data-ui="wOnly"'+(UI.wOnly?' checked':'')+'> Show only tanks needing attention</label>'
-   +'<div class="stack cols">'+(list.length?list.map(function(t){var s=tankWater(t.id);
-      return '<article class="card wq"><header><div><h3>'+esc(t.name)+'</h3><p class="sub">'+esc(t.line)+'</p></div><div class="r">'+waterBadges(s)+'<span class="age">'+(s.invalidDate?'measurement date needs review':s.w?(s.age===0?'tested today':s.age===1?'tested yesterday':'tested '+s.age+' days ago'):'never tested')+'</span></div></header>'
-       +(s.w?'<div class="water-gauges">'+s.items.map(chip).join('')+'</div>':'<p class="sub">No water test logged for this tank yet.</p>')
-       +'<div class="water-causes">'+waterReasons(s).map(function(r){return '<p class="note">'+esc(r)+'</p>';}).join('')+'</div>'
-       +'<div class="foot"><button class="btn ghost sm" data-act="water-focus" data-tank="'+t.id+'">See trend</button><button class="btn ghost sm" data-act="water-add" data-tank="'+t.id+'">Log test</button></div></article>';}).join(''):'<p class="allgood">No tanks need water-condition or freshness attention.</p>')+'</div></section>';
-  var pk=UI.wParam;
-  h+='<section id="trend"><h2>Trend</h2><div class="card"><div class="inline-sel" style="margin-bottom:10px"><label class="fld"><span>Tank</span><select data-ui="wTank">'+T.map(function(t){return '<option value="'+t.id+'"'+(UI.wTank===t.id?' selected':'')+'>'+esc(t.name)+' · '+esc(t.line)+'</option>';}).join('')+'</select></label>'
-   +'<label class="fld"><span>Parameter</span><select data-ui="wParam">'+PARAMS.map(function(p){return '<option value="'+p.k+'"'+(pk===p.k?' selected':'')+'>'+p.label+(p.unit?' ('+p.unit+')':'')+'</option>';}).join('')+'</select></label></div>'
-   +waterChart(UI.wTank,pk)+'<p class="sub" style="margin-top:6px"><span style="display:inline-block;width:14px;height:9px;background:var(--okSoft);border:1px solid var(--line);vertical-align:middle;margin-right:4px"></span>Optimal range '+rangeTxt(pk)+'. Last 30 days.</p></div></section>';
-  var hist=S.water.slice().sort(byDateDesc).slice(0,20);
-  h+='<section><h2>Recent tests</h2>'+(hist.length?'<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Tank</th>'+PARAMS.map(function(p){return '<th class="r">'+p.label+(p.unit?' ('+p.unit+')':'')+'</th>';}).join('')+'<th>Officer</th><th></th></tr></thead><tbody>'
-   +hist.map(function(w){return '<tr><td>'+fmtD(w.date)+'<small style="display:block">'+esc(w.time||'Time not recorded')+'</small><small style="display:block">'+esc(waterSource(w))+'</small></td><td><b>'+esc(tankName(w.tank))+'</b></td>'+PARAMS.map(function(p){var j=judge(p.k,w[p.k]);return '<td class="r'+(j&&j.lvl?' l'+j.lvl:'')+'">'+fmtV(p,w[p.k])+(j&&j.lvl?' '+j.dir:'')+'</td>';}).join('')+'<td>'+esc(w.officer||'—')+'</td><td><button class="btn danger sm" data-act="del" data-kind="water" data-id="'+w.id+'">Delete</button></td></tr>';}).join('')+'</tbody></table></div>':'<p class="empty card">No water tests logged.</p>')+'</section>';
-  return h;
+ var T=activeTanks();if(!T.length)return emptyFarm();
+ var mode=UI.wFilter||(UI.wOnly?'attention':'all'),list=sortedBySeverity(T).filter(function(t){return waterFilterMatch(t,mode);});
+ return '<section class="water-monitor"><div class="sec-h"><div><h2>Water monitoring</h2><p class="sub">Compare recorded conditions and measurement freshness.</p></div><button class="btn" data-act="water-add">Log test</button></div>'
+ +'<div class="water-filters" role="group" aria-label="Filter tanks">'+[['all','All tanks'],['range','Out-of-range readings'],['freshness','Overdue or missing measurements']].map(function(f){return '<button class="btn ghost" data-act="water-filter" data-filter="'+f[0]+'" aria-pressed="'+(mode===f[0])+'">'+f[1]+' <span>('+T.filter(function(t){return waterFilterMatch(t,f[0]);}).length+')</span></button>';}).join('')+'</div>'
+ +'<details class="water-summary-details"><summary>Condition &amp; freshness summary</summary>'+waterSummaryHTML()+'<p class="sub water-filter-help">Outside configured range describes measured values. Overdue describes their age. The freshness filter also includes partial records and dates needing review.</p></details>'
+ +'<p class="sub" role="status">Showing '+list.length+' of '+T.length+' active tanks.</p><div class="water-compact-grid">'+(list.length?list.map(waterCompactCard).join(''):'<p class="empty card">No tanks match this filter. Choose All tanks to see the other records.</p>')+'</div>'
+ +'<details class="water-history water-all-history"><summary>All measurement history · '+S.water.length+' tests (including retired tanks)</summary>'+waterHistoryHTML(S.water)+'</details></section>';
 }
 
 function viewFeeding(){
@@ -961,7 +970,9 @@ document.addEventListener('click',function(e){
     case 'feed-res':var fe=S.feed.filter(function(x){return x.id===d.id;})[0];
       if(fe){fe.res=d.res;commit();toast(d.res==='left'?'Marked as left over. Remove it from '+tankName(fe.tank)+'.':d.res==='eaten'?'Marked as eaten within 2 hours.':'Reset. Check again after 2 hours.');}break;
     case 'rate-x100':S.settings.feedA=+(S.settings.feedA*100).toFixed(4);S.settings.feedB=+(S.settings.feedB*100).toFixed(4);commit();toast('Rates are now '+fmtPct(S.settings.feedA)+' and '+fmtPct(S.settings.feedB)+'.');break;
-    case 'water-focus':UI.wTank=d.tank;render();var tr=$('#trend');if(tr)tr.scrollIntoView({behavior:'smooth',block:'start'});break;
+    case 'water-filter':UI.wFilter=d.filter;UI.wOnly=false;render();break;
+    case 'water-expand':UI.wExpanded=UI.wExpanded===d.tank?null:d.tank;render();break;
+    case 'water-focus':UI.wTank=d.tank;UI.wTrend=UI.wTrend===d.tank?null:d.tank;render();break;
     case 'del':armed(el,function(){delEntry(d.kind,d.id);});break;
     case 'tank-retire':var t=tankOf(d.id);if(t){t.active=false;closeSheet();commit();toast(t.name+' retired. Its records are kept.');}break;
     case 'tank-react':var r=tankOf(d.id);if(r){r.active=true;commit();toast(r.name+' is active again.');}break;
@@ -1081,5 +1092,6 @@ render();
 </script>
 </body>
 </html>
+
 
 
