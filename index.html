@@ -388,25 +388,25 @@ function phSwing(id){
 }
 function tankWater(id){
   var w=latestWater(id),age=w&&typeof w.date==='string'?diffDays(today(),w.date):null,limit=S.settings.worldStaleDays||7;
-  var invalidDate=!!w&&(typeof w.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(w.date)||!Number.isFinite(age)||age<0||ymd(parseD(w.date))!==w.date),overdue=!!w&&(invalidDate||age>=limit),sw=phSwing(id);
+  var invalidDate=!!w&&(typeof w.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(w.date)||!Number.isFinite(age)||age<0||ymd(parseD(w.date))!==w.date),overdue=!!w&&!invalidDate&&age>=limit,sw=phSwing(id);
   var items=PARAMS.map(function(p){var v=w?w[p.k]:null,j=judge(p.k,v);
     if(p.k==='ph'&&j&&sw>S.settings.phSwing+1e-9)j={lvl:Math.max(j.lvl,1),dir:j.dir,unstable:true,swing:sw};
     return {p:p,v:v,j:j,overdue:overdue};
   });
   var measured=items.filter(function(i){return !!i.j;}),missing=items.filter(function(i){return i.p.k!=='do'&&!i.j;});
   var lvl=measured.length?Math.max.apply(null,measured.map(function(i){return i.j.lvl;})):null;
-  var freshness=!measured.length?'missing':missing.length?'partial':overdue?'overdue':'current';
+  var freshness=!measured.length?'missing':missing.length?'partial':invalidDate?'review':overdue?'overdue':'current';
   return {w:w,items:items,lvl:lvl,condition:lvl===null?'unknown':lvl===2?'danger':lvl===1?'warning':'within',age:age,
     freshness:freshness,overdue:overdue,invalidDate:invalidDate,missing:missing,measured:measured.length,
-    outOfRange:items.some(function(i){return i.j&&!!i.j.dir;}),needsAttention:lvl>0||freshness!=='current'};
+    outOfRange:items.some(function(i){return i.j&&!!i.j.dir;}),needsAttention:lvl>0||freshness!=='current'||invalidDate};
 }
 function conditionText(s){
  if(s.lvl===null)return 'Not assessed';
- if(s.lvl>0)return LEVEL[s.lvl]+(s.overdue?' when last tested':'');
- if(s.overdue)return 'Within range when last tested'+(s.freshness==='partial'?' · recorded values only':'');
- return s.freshness==='partial'?'Recorded values within range':'Within configured range';
+ if(s.lvl>0)return LEVEL[s.lvl]+(s.overdue?' when last tested':'')+(s.missing.length?' · based on recorded values':'');
+ if(s.overdue)return 'Within range when last tested'+(s.missing.length?' · recorded values only':'');
+ return s.missing.length?'Recorded values within range':'Within configured range';
 }
-function freshnessText(s){return {current:'Current',overdue:'Overdue',missing:'Missing',partial:'Partially recorded'}[s.freshness]+(s.overdue&&s.freshness!=='overdue'?' · Overdue':'');}
+function freshnessText(s){return {current:'Current',overdue:'Overdue',missing:'Missing',partial:'Partially recorded',review:'Date needs review'}[s.freshness]+(s.invalidDate&&s.freshness!=='review'?' · Date needs review':s.overdue&&s.freshness!=='overdue'?' · Overdue':'');}
 function readingCause(i){
  var value=i.p.label+' '+fmtV(i.p,i.v)+(i.p.unit?' '+i.p.unit:' (unitless)'),parts=[];
  if(i.j.dir)parts.push(i.j.dir+' — '+LEVEL[i.j.lvl]);
@@ -417,7 +417,7 @@ function waterReasons(s){
  var reasons=s.items.filter(function(i){return i.j&&i.j.lvl>0;}).map(readingCause);
  if(s.freshness==='missing')reasons.push('Missing: no valid water readings recorded.');
  else if(s.missing.length)reasons.push('Partially recorded: missing '+s.missing.map(function(i){return i.p.label;}).join(', ')+'. DO remains optional.');
- if(s.invalidDate)reasons.push('Overdue: measurement date is invalid or in the future; confirm the date and retest.');
+ if(s.invalidDate)reasons.push('Date needs review: measurement date is invalid or in the future; confirm the date and retest.');
  else if(s.overdue)reasons.push('Overdue: last tested '+s.age+' days ago; configured limit '+(S.settings.worldStaleDays||7)+' days.');
  return reasons;
 }
@@ -425,9 +425,9 @@ function waterBadges(s){return '<span class="water-status-pair"><span class="pil
 function waterSummary(){
  var states=activeTanks().map(function(t){return tankWater(t.id);}),n=function(fn){return states.filter(fn).length;};
  return {total:states.length,outOfRange:n(function(s){return s.outOfRange;}),warning:n(function(s){return s.lvl===1;}),danger:n(function(s){return s.lvl===2;}),
- current:n(function(s){return s.freshness==='current';}),overdue:n(function(s){return s.overdue;}),missing:n(function(s){return s.freshness==='missing';}),partial:n(function(s){return s.freshness==='partial';})};
+ current:n(function(s){return s.freshness==='current';}),overdue:n(function(s){return s.overdue;}),missing:n(function(s){return s.freshness==='missing';}),partial:n(function(s){return s.freshness==='partial';}),dateReview:n(function(s){return s.invalidDate;})};
 }
-function waterSummaryHTML(){var c=waterSummary();return '<div class="water-summary"><p><b>'+c.outOfRange+' of '+c.total+' tanks have out-of-range recorded values.</b> Water condition: '+c.warning+' warning · '+c.danger+' danger.</p><p class="sub">Freshness: '+c.current+' current · '+c.overdue+' overdue · '+c.missing+' missing · '+c.partial+' partially recorded. Overdue can overlap incomplete records; age never counts as out of range. Warnings also include configured pH-swing alerts.</p></div>';}
+function waterSummaryHTML(){var c=waterSummary();return '<div class="water-summary"><p><b>'+c.outOfRange+' of '+c.total+' tanks have out-of-range recorded values.</b> Water condition: '+c.warning+' warning · '+c.danger+' danger.</p><p class="sub">Freshness: '+c.current+' current · '+c.overdue+' overdue · '+c.missing+' missing · '+c.partial+' partially recorded · '+c.dateReview+' dates need review. Overdue can overlap incomplete records; age never counts as out of range. Warnings also include configured pH-swing alerts.</p></div>';}
 
 /* ---------- feeding estimate ---------- */
 /* biomass = shrimp × reference weight (75 mg unless the tank has its own); ration = biomass × selected % per day */
@@ -529,7 +529,7 @@ function chip(i){
   return '<div class="water-gauge '+(valid?'l'+lvl:'none')+'"><div class="gauge-label"><span>'+p.label+'</span><b>'+fmtV(p,i.v)+(p.unit?' '+p.unit:'')+'</b></div><div class="gauge-track" role="img" aria-label="'+esc(label+'; '+status+'; optimal '+rangeTxt(p.k))+'"><span class="gauge-optimal" style="left:'+left+'%;width:'+Math.max(1,right-left)+'%"></span>'+(valid?'<span class="gauge-thumb" style="left:'+pos(+i.v)+'%"></span>':'')+'</div><div class="gauge-caption"><span>'+esc(status)+'</span><span>Optimal '+rangeTxt(p.k)+'</span></div></div>';
 }
 function offList(tid){return tankWater(tid).items.filter(function(i){return i.j&&i.j.lvl>0;}).sort(function(a,b){return b.j.lvl-a.j.lvl;});}
-function sortedBySeverity(T){return T.slice().sort(function(a,b){return tankWater(b.id).lvl-tankWater(a.id).lvl||a.name.localeCompare(b.name,undefined,{numeric:true});});}
+function sortedBySeverity(T){function rank(s){return s.lvl===2?5:s.lvl===1?4:s.lvl===null?3:s.invalidDate?2:s.overdue||s.freshness==='partial'?1:0;}return T.slice().sort(function(a,b){return rank(tankWater(b.id))-rank(tankWater(a.id))||a.name.localeCompare(b.name,undefined,{numeric:true});});}
 /* ---------- alerts ---------- */
 function alerts(){
   var out=[],T=activeTanks(),t0=today(),notFed=[];
@@ -614,7 +614,7 @@ function viewOverview(){
  var c=waterSummary(),al=alerts();
  return '<div class="daily-overview">'+dailyHeading()+'<section class="daily-urgent"><div class="sec-h"><h2>Needs attention</h2><span class="sub">'+al.length+' issues</span></div>'+(al.length?attentionList(al.slice(0,3))+(al.length>3?'<details class="more-alerts"><summary>Show '+(al.length-3)+' more issues</summary>'+attentionList(al.slice(3))+'</details>':''):'<p class="allgood">Nothing needs attention right now.</p>')+'</section>'
  +'<section class="daily-log"><h2>Quick log</h2><div class="quick"><button class="btn" data-act="water-add">Water test</button><button class="btn" data-act="feed-add">Feeding</button><button class="btn ghost" data-act="death-add">Shrimp deaths</button><button class="btn ghost" data-act="stock-pick">Stock change</button></div></section>'
- +'<div class="tiles daily-tiles"><div class="tile"><div class="eyebrow">Recorded stock</div><div class="v">'+fmtN(total)+'</div><div class="s">'+T.length+' active tanks</div></div><div class="tile"><div class="eyebrow">Out-of-range tanks</div><div class="v">'+c.outOfRange+'</div><div class="s">'+c.overdue+' tests overdue</div></div><div class="tile"><div class="eyebrow">Fed today</div><div class="v">'+fedTanks+'/'+T.length+'</div><div class="s">tanks with a feeding log</div></div><div class="tile"><div class="eyebrow">Deaths · 7 days</div><div class="v">'+d7+'</div><div class="s">recorded deaths</div></div></div>'
+ +'<div class="tiles daily-tiles"><div class="tile"><div class="eyebrow">Recorded stock</div><div class="v">'+fmtN(total)+'</div><div class="s">'+T.length+' active tanks</div></div><div class="tile"><div class="eyebrow">Out-of-range tanks</div><div class="v">'+c.outOfRange+'</div><div class="s">' +c.warning+' warning · '+c.danger+' danger · '+c.overdue+' overdue · '+c.dateReview+' date review</div></div><div class="tile"><div class="eyebrow">Fed today</div><div class="v">'+fedTanks+'/'+T.length+'</div><div class="s">tanks with a feeding log</div></div><div class="tile"><div class="eyebrow">Deaths · 7 days</div><div class="v">'+d7+'</div><div class="s">recorded deaths</div></div></div>'
  +'<section><div class="sec-h"><h2>Your tanks</h2><button class="btn ghost sm" data-act="tab" data-tab="water">Open Water</button></div>'+waterSummaryHTML()+'<div class="daily-tank-grid">'+sortedBySeverity(T).map(function(t){return dailyTankCard(t,false,false);}).join('')+'</div></section></div>';
 }
 
