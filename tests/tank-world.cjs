@@ -5,14 +5,14 @@ code=code.slice(0,code.indexOf('/* ---------- boot ---------- */'))+`globalThis.
 const nodes={},storage={}; const ctx={console,setInterval:()=>{},setTimeout:()=>{},window:{addEventListener:()=>{}},document:{addEventListener:()=>{},querySelector:s=>nodes[s]||(nodes[s]={})},localStorage:{getItem:k=>storage[k],setItem:(k,v)=>storage[k]=v}};
 vm.createContext(ctx);vm.runInContext(code,ctx);const a=ctx.api;let checks=0;function test(name,fn){fn();checks++;console.log('PASS '+name);}
 let s=a.emptyState(),t={id:'t1',name:'Test',line:'Blue Dream',active:true};s.tanks=[t];a.state(s);
-test('Missing measurements are Watch',()=>assert.equal(a.worldHealth(t).lvl,1));
+test('Missing measurements are unassessed',()=>{assert.equal(a.worldHealth(t).lvl,null);assert.equal(a.worldHealth(t).tw.freshness,'missing')});
 test('No stock entries mean unknown population',()=>assert.equal(a.worldPopulation(t).known,false));
 let w={id:'w1',tank:t.id,date:a.today(),temp:27,ph:7,gh:8,kh:3,tds:190,nh3:0,no2:0,no3:10};s.water=[w];
-test('Complete fresh targets are Optimal; DO optional',()=>assert.equal(a.worldHealth(t).lvl,0));
+test('Complete fresh targets are within range; DO optional',()=>assert.equal(a.worldHealth(t).lvl,0));
 test('Warning breach',()=>{w.temp=30;assert.equal(a.worldHealth(t).lvl,1)});
 test('Critical overrides warning',()=>{w.nh3=.3;assert.equal(a.worldHealth(t).lvl,2)});
-test('Missing required parameter',()=>{w.temp=27;w.nh3=0;delete w.kh;assert.equal(a.worldHealth(t).lvl,1);w.kh=3});
-test('Stale readings are Watch',()=>{w.date='2020-01-01';assert.equal(a.worldHealth(t).lvl,1);w.date=a.today()});
+test('Missing required parameter',()=>{w.temp=27;w.nh3=0;delete w.kh;assert.equal(a.worldHealth(t).lvl,0);assert.equal(a.worldHealth(t).tw.freshness,'partial');w.kh=3});
+test('Overdue age does not raise condition severity',()=>{w.date='2020-01-01';assert.equal(a.worldHealth(t).lvl,0);assert.equal(a.worldHealth(t).tw.freshness,'overdue');w.date=a.today()});
 test('Configurable thresholds',()=>{s.settings.ranges.temp.omax=26;assert.equal(a.worldHealth(t).lvl,1);s.settings.ranges.temp.omax=29});
 s.ledger=[{id:'l1',tank:'t1',kind:'count',qty:107,date:a.today()}];a.state(s);
 test('Recorded ledger total',()=>assert.equal(a.worldPopulation(t).total,107));
