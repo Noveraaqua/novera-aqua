@@ -80,10 +80,19 @@ function attach(form,options){
  function showResults(parsed){
   results.replaceChildren();workspace.classList.add('has-results');for(const text of parsed.warnings)results.append(el('p',{className:'photo-warning'},text));
   results.append(el('h3',{},'Review readings'));
-  const primary=el('div',{className:'photo-review'}),extra=el('div',{className:'photo-review'});results.append(primary,el('h3',{},'Additional readings'),extra);
+  const layoutConfirm=parsed.layout&&!parsed.layout.verified?el('label',{className:'photo-review-confirm'}):null;
+ const layoutCheck=layoutConfirm?el('input',{type:'checkbox'}):null;
+ if(layoutConfirm){layoutCheck.setAttribute('aria-label','Confirm HORIBA nine reading layout');
+ layoutConfirm.append(layoutCheck,document.createTextNode('I confirm this photo shows the HORIBA nine-reading display: temperature, pH, pH mV, ORP, EC and DO (left), with %DO, TDS and salinity (right).'));
+ results.append(layoutConfirm);}
+ const primary=el('div',{className:'photo-review'}),extra=el('div',{className:'photo-review'});results.append(primary,el('h3',{},'Additional readings'),extra);
+  const diagnosticsBtn=el('button',{type:'button',className:'btn ghost sm'},'Download OCR diagnostics (text only)');results.append(diagnosticsBtn);
+  diagnosticsBtn.onclick=()=>{const log={version:lastOcrVersion,time:new Date().toISOString(),diagnostics:parsed.diagnostics||null,readings:parsed.readings.map(r=>({key:r.key,display:r.display,uncertain:r.uncertain,reason:r.reason,raw:r.raw}))};
+   const url=URL.createObjectURL(new Blob([JSON.stringify(log,null,2)],{type:'application/json'}));
+   const a=el('a',{href:url,download:'novera-horiba-ocr-diagnostics.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);};
   rows=parsed.readings.map(r=>{
    const card=el('div',{className:'photo-reading'}),label=el('label',{},r.label+' ('+r.unit+')'),i=el('input',{type:'number',step:'any',value:r.value==null?'':String(r.display??r.value)});i.setAttribute('aria-label','Photo '+r.label);label.append(i);card.append(label,el('small',{},'OCR: '+(r.raw||'No reliable candidate')));
-   if(r.conversion)card.append(el('small',{},r.conversion));if(r.message)card.append(el('small',{className:'photo-warning'},r.message));
+   if(r.uncertain)card.append(el('small',{className:'photo-warning'},'Uncertain: verify this measurement manually.'));if(r.conversion)card.append(el('small',{},r.conversion));if(r.message)card.append(el('small',{className:'photo-warning'},r.message));
    if(r.key==='tds')card.append(el('small',{},'For dilute freshwater only: mg/L ≈ ppm. Do not use this assumption for saline samples.'));
    const target=field(r.key);if(target){card.append(el('small',{},'Destination: '+r.label+' · '+options.range(r.key)));const warning=el('small',{className:'photo-warning'});card.append(warning);const warn=()=>{const judged=inputValue(i)==null?null:options.judge?.(r.key,inputValue(i));warning.textContent=judged&&judged.lvl?'Outside the configured target — verify this value against the photo.':'';};i.addEventListener('input',warn);warn();}
    (target?primary:extra).append(card);return {r,input:i,target};
@@ -96,6 +105,7 @@ function attach(form,options){
   const apply=el('button',{type:'button',className:'btn'},'Use reviewed readings');results.append(apply);
   results.oninput=e=>{applied=false;if(e.target!==reviewed)reviewed.checked=false;};
   apply.onclick=()=>{
+   if(layoutCheck&&!layoutCheck.checked){status.textContent='The instrument layout could not be verified by OCR. Confirm the nine-reading layout above, or cancel photo entry.';return;}
    if(!reviewed.checked){status.textContent='Review the readings and tick the confirmation first.';return;}
    const values=[],additional=[];
    for(const row of rows){const {r,input,target}=row;if(input.value==='')continue;const n=Number(input.value);if(!Number.isFinite(n)||(n<0&&!['temp','orp','phmv'].includes(r.key))||(r.key==='ph'&&(n<0||n>14))){status.textContent='Check '+r.label+'.';return;}
