@@ -1,0 +1,42 @@
+name: Prepare verified HORIBA OCR model for test branch
+on:
+  push:
+    branches: [horiba-ocr-test-2026-10]
+    paths:
+      - '.github/workflows/horiba-test-model.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: horiba-ocr-test-2026-10
+          persist-credentials: true
+      - name: Run browser reconciliation regression tests
+        run: |
+          node tests/horiba-core.cjs
+          node tests/horiba-reconcile.cjs
+          node tests/horiba-photo-switch.cjs
+      - name: Download and verify the exact PP-OCRv3 model
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/models
+          curl --fail --location --retry 3 --retry-delay 3 --max-time 180             'https://huggingface.co/SWHL/RapidOCR/resolve/4e4644045a07c403b1ad40ca97340ecb4a8dc2c1/PP-OCRv3/en_PP-OCRv3_rec_infer.onnx'             --output assets/models/en-rec.onnx
+          echo 'ef7abd8bd3629ae57ea2c28b425c1bd258a871b93fd2fe7c433946ade9b5d9ea  assets/models/en-rec.onnx' | sha256sum --check
+      - name: Commit model only to test branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f assets/models/en-rec.onnx
+          if git diff --cached --quiet; then
+            echo 'Model already on test branch.'
+            exit 0
+          fi
+          git commit -m 'Add SHA-256 verified PP-OCRv3 model to HORIBA test branch'
+          git push origin HEAD:horiba-ocr-test-2026-10
