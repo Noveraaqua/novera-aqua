@@ -24,11 +24,11 @@ function syntheticDigits(count,negative=false){
 }
 check('Temperature isolated prefix requires visual digit count',()=>{
  const r=R.decide('temp',[p('27.85'),p('1 27.85',.88)],syntheticDigits(4));
- assert.equal(r.display,'27.85');assert.equal(r.reason,'visual_discard_isolated_prefix');assert.equal(r.review,true);
+ assert.equal(r.display,'27.85');assert.equal(r.reason,'visual_extraneous_prefix');assert.equal(r.review,true);
 });
 check('ORP malformed sign rejected when image has no minus',()=>{
  const r=R.decide('orp',[p('176'),p('-..176',.85)],syntheticDigits(3));
- assert.equal(r.display,'176');assert.equal(r.reason,'visual_reject_malformed_sign');
+ assert.equal(r.display,'176');assert.equal(r.reason,'visual_malformed_sign_artifact');
 });
 check('DO spurious negative rejected when image has no minus',()=>{
  const r=R.decide('do',[p('11.90'),p('-11.90')],syntheticDigits(4));
