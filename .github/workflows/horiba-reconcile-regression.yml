@@ -1,0 +1,25 @@
+name: HORIBA experimental reconciliation regression
+on:
+  push:
+    branches: [horiba-ocr-test-2026-10]
+    paths:
+      - 'assets/horiba-reconcile.js'
+      - 'tests/horiba-reconcile.cjs'
+      - '.github/workflows/horiba-reconcile-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run existing and experimental OCR checks
+        run: |
+          node tests/horiba-core.cjs
+          node tests/horiba-reconcile.cjs
+          node tests/horiba-photo-switch.cjs
+          node tests/horiba-partial-layout.cjs
