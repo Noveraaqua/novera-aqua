@@ -62,9 +62,9 @@ function decide(key,passes,im){const base=compare(key,passes);
   const i=cs[0]!==null?0:1,candidate=cs[i],other=String(passes[1-i].text||'').trim().replace(/[−–]/g,'-').replace(/["' :;]+$/,'');
   if(ev.digitComponents!==count(candidate))return {...base,visual:ev};
   if(['ph','saturation'].includes(key)&&other&&(candidate.endsWith(other)||candidate.replace('.','').endsWith(other.replace('.',''))))return accept(candidate,'visual_digit_count_corroborated');
-  if(key==='temp'&&other===('1 '+candidate)&&!ev.minusShape)return accept(candidate,'visual_extraneous_prefix');
+  if(key==='temp'&&other===('1 '+candidate)&&!ev.minusShape)return accept(candidate,'visual_discard_isolated_prefix');
   if(key==='do'&&other===('-'+candidate)&&!ev.minusShape)return accept(candidate,'visual_spurious_minus');
-  if(key==='orp'&&/^-[.\s]+/.test(other)&&other.replace(/^-[.\s]+/,'')===candidate&&!ev.minusShape)return accept(candidate,'visual_malformed_sign_artifact');
+  if(key==='orp'&&/^-[.\s]+/.test(other)&&other.replace(/^-[.\s]+/,'')===candidate&&!ev.minusShape)return accept(candidate,'visual_reject_malformed_sign');
  }
  return {...base,visual:ev};
 }
