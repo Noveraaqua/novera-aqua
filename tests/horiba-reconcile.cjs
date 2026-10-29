@@ -14,4 +14,34 @@ check('Missing reading never coerced to zero',()=>assert.equal(R.compare('ec',[p
 check('Unsafe sign for dissolved oxygen rejected',()=>assert.equal(R.strict('-1.20','do'),null));
 check('Unusable visual crop cannot force acceptance',()=>assert.equal(R.decide('orp',[p('166'),p('-166')],null).value,null));
 check('Correct negative when both agree',()=>assert.equal(R.compare('phmv',[p('-54'),p('-54')]).value,-54));
+
+function syntheticDigits(count,negative=false){
+ const width=340,height=180,data=new Uint8ClampedArray(width*height*4);data.fill(255);
+ function block(x,y,w,h){for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){const i=(yy*width+xx)*4;data[i]=data[i+1]=data[i+2]=0;}}
+ for(let k=0;k<count;k++)block(90+k*48,40,30,85);
+ if(negative)block(37,78,34,15);
+ return {width,height,data};
+}
+check('Temperature isolated prefix requires visual digit count',()=>{
+ const r=R.decide('temp',[p('27.85'),p('1 27.85',.88)],syntheticDigits(4));
+ assert.equal(r.display,'27.85');assert.equal(r.reason,'visual_discard_isolated_prefix');assert.equal(r.review,true);
+});
+check('ORP malformed sign rejected when image has no minus',()=>{
+ const r=R.decide('orp',[p('176'),p('-..176',.85)],syntheticDigits(3));
+ assert.equal(r.display,'176');assert.equal(r.reason,'visual_reject_malformed_sign');
+});
+check('DO spurious negative rejected when image has no minus',()=>{
+ const r=R.decide('do',[p('11.90'),p('-11.90')],syntheticDigits(4));
+ assert.equal(r.display,'11.90');assert.equal(r.review,true);
+});
+check('ORP sign ambiguity must abstain when actual minus is visible',()=>{
+ assert.equal(R.decide('orp',[p('176'),p('-..176')],syntheticDigits(3,true)).value,null);
+});
+check('DO sign ambiguity must abstain when actual minus is visible',()=>{
+ assert.equal(R.decide('do',[p('11.90'),p('-11.90')],syntheticDigits(4,true)).value,null);
+});
+check('Temperature prefix must abstain on mismatched digit count',()=>{
+ assert.equal(R.decide('temp',[p('27.85'),p('1 27.85')],syntheticDigits(5)).value,null);
+});
+
 console.log(n+' reconciler checks passed');

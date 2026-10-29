@@ -49,6 +49,26 @@ function decide(key,passes,im){const base=compare(key,passes);
  if(base.value!==null||base.reason==='low_recognition_score'||!['ph','phmv','orp','saturation'].includes(key))return {...base,visual:null};
  const ev=visualEvidence(im);if(ev.status!=='evaluated')return {...base,visual:ev};
  const cs=passes.map(p=>canonical(p,key).display),accept=(s,reason)=>({value:Number(s),display:s,reason,review:true,visual:ev});
+ // Only resolve a one-pass OCR artifact if the OTHER pass supplies a well-formed
+ // value, the source pixels contain exactly its digits, and no unaccounted sign
+ // is visible. Never manufacture a number from a single ambiguous OCR pass.
+ const digitCount=s=>[...s.replace(/^-/, '')].filter(c=>/\d/.test(c)).length;
+ const corroborated=(s,raw)=>ev.digitComponents===digitCount(s)&&!ev.minusShape&&typeof raw==='string';
+ if(['temp','orp','do'].includes(key)&&cs.filter(c=>c!==null).length===1){
+  const i=cs[0]!==null?0:1,candidate=cs[i],raw=String(passes[1-i].text||'').trim();
+  if(corroborated(candidate,raw)&&!candidate.startsWith('-')){
+   // Second pass has an isolated, separated prefix ('1 27.85').
+   if(key==='temp'&&/^\d+\s+/.test(raw)&&raw.split(/\s+/).at(-1)===candidate)
+    return accept(candidate,'visual_discard_isolated_prefix');
+   // Second pass has a malformed minus/dot prefix ('-..176').
+   if(key==='orp'&&/^-\.{1,3}\d+$/.test(raw)&&raw.replace(/^-\.+/,'')===candidate)
+    return accept(candidate,'visual_reject_malformed_sign');
+   // Negative DO is physically invalid; accept the independently recognized
+   // positive digits only when the visual crop contains no sign component.
+   if(key==='do'&&raw==='-'+candidate)
+    return accept(candidate,'visual_reject_spurious_do_sign');
+  }
+ }
  if(base.reason==='conflicting_sign'&&['phmv','orp'].includes(key)&&cs.every(c=>c!==null)&&cs[0].replace(/^-/, '')===cs[1].replace(/^-/,'')){
   const digits=cs[0].replace(/^-/, '');if(ev.digitComponents===digits.length)return accept((ev.minusShape?'-':'')+digits,'visual_sign_evidence');
  }
