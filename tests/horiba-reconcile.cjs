@@ -44,4 +44,20 @@ check('Temperature prefix must abstain on mismatched digit count',()=>{
  assert.equal(R.decide('temp',[p('27.85'),p('1 27.85')],syntheticDigits(5)).value,null);
 });
 
+
+function fixture(digits=3,minus=false){
+ const width=450,height=170,data=new Uint8ClampedArray(width*height*4);
+ for(let i=0;i<data.length;i+=4)data[i]=data[i+1]=data[i+2]=data[i+3]=255;
+ function rect(x,y,w,h){for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){let k=(yy*width+xx)*4;data[k]=data[k+1]=data[k+2]=0;}}
+ for(let i=0;i<digits;i++)rect(90+i*65,40,30,85);
+ if(minus)rect(40,72,35,16);
+ return {width,height,data};
+}
+check('Temperature extra prefix visually corroborated',()=>assert.equal(R.decide('temp',[p('27.85'),p('1 27.85')],fixture(4)).display,'27.85'));
+check('ORP malformed minus visually corroborated',()=>assert.equal(R.decide('orp',[p('176'),p('-..176')],fixture(3)).display,'176'));
+check('DO spurious minus visually corroborated',()=>assert.equal(R.decide('do',[p('11.90'),p('-11.90')],fixture(4)).display,'11.90'));
+check('DO abstains if minus is visible',()=>assert.equal(R.decide('do',[p('11.90'),p('-11.90')],fixture(4,true)).value,null));
+check('ORP abstains if minus is visible',()=>assert.equal(R.decide('orp',[p('176'),p('-..176')],fixture(3,true)).value,null));
+check('Temperature abstains if digit geometry mismatches',()=>assert.equal(R.decide('temp',[p('27.85'),p('1 27.85')],fixture(3)).value,null));
+
 console.log(n+' reconciler checks passed');
