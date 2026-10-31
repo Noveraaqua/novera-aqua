@@ -1,7 +1,7 @@
 /* HORIBA nine-reading geometry and validation. No network/storage; shared by worker/tests. */
 (function(root){'use strict';
 const FIELDS=[
- ['temp','Temperature','°C',0,0,/C$/i],['ph','pH','pH',0,1,/pH$/i],
+ ['temp','Temperature','°C',0,0,/^C$/i],['ph','pH','pH',0,1,/pH$/i],
  ['phmv','pH electrode potential','mV',0,2,/pHm[VY]$/i],['orp','ORP','mV',0,3,/ORPm[VY]$/i],
  ['ec','Conductivity','mS/cm',0,4,/mS\/cm$/i],['do','Dissolved oxygen','mg/L',0,5,/mg\/LD[O0]$/i],
  ['saturation','Oxygen saturation','%',1,0,/%D[O0]$/i],['tds','TDS','ppm',1,1,/(?:mg|g)\/LTDS$/i],['salinity','Salinity','ppt',1,2,/ppt$/i]
@@ -25,19 +25,47 @@ function consensus(key,passes){
 }
 function parse(readings,labels,spare,decisions=null,options={}){
  const layout=checkLayout(labels,spare);
- // Legacy strict mode remains unchanged. Browser review mode permits unverified
- // candidate values only with explicit nine-parameter layout confirmation.
- if(!layout.ok&&!options.allowUnverified)throw new Error('The nine-reading HORIBA layout could not be verified. Use the nine-reading display, adjust the screen crop, or enter readings manually.');
- return {readings:FIELDS.map(f=>{const passes=readings[f.key]||[],decision=decisions?.[f.key]||null,
- proposed=decision?decision.value:consensus(f.key,passes),
- value=(layout.matched[f.key]||options.allowUnverified)?proposed:null;
- const labelWarning=!layout.matched[f.key]||!layout.ok;
- const rawTdsLabel=normalizeLabel(labels.tds||'');
- const g=f.key==='tds'&&/(?:^|[^m])g\/LTDS$/i.test(rawTdsLabel);
- const mg=f.key==='tds'&&/mg\/LTDS$/i.test(rawTdsLabel);
- const unknownTds=f.key==='tds'&&!g&&!mg;
- const factor=g?1000:1,ready=unknownTds?null:value;
- return {key:f.key,label:f.label,unit:f.unit,value:ready==null?null:+(ready*factor).toPrecision(10),display:ready==null?null:(f.key==='tds'&&g?String(ready*1000):(decision?.display??String(ready))),reason:decision?.reason||null,raw:passes.map(p=>p.text).join(' / ')+' '+(labels[f.key]||''),uncertain:ready==null||labelWarning,freshwater:f.key==='tds',conversion:f.key==='tds'&&ready!=null?`${value} ${g?'g/L':'mg/L'} → ${value*factor} mg/L`:'',message:unknownTds?'TDS UNIT COULD NOT BE VERIFIED: OCR cannot safely convert g/L to ppm. Enter the verified value manually. ':labelWarning?'UNVERIFIED UNIT / SCREEN LAYOUT — confirm the nine-reading HORIBA layout and this measurement position against the photo. ':value==null?'Check this reading: recognition is uncertain.':decision&&decision.reason!=='exact_agreement'?'Experimental OCR suggestion: '+decision.reason.replace(/_/g,' ')+'. Verify digits and sign against the photo.':''};}),layout:{verified:layout.ok,matched:layout.matched,matchedCount:layout.matchedCount,anchorsVerified:layout.anchorsVerified,manualConfirmationRequired:!layout.ok},warnings:[layout.ok?'HORIBA nine-reading layout unit labels verified; still confirm all values.':'HORIBA NINE-READING LAYOUT NOT AUTOMATICALLY VERIFIED. Numeric values are suggestions only. Confirm the exact screen structure and every reading against the photo before using them.','The meter clock has NOT been applied. Confirm the actual measurement date and time.']};
+ if(!layout.ok&&!options.allowUnverified)
+  throw new Error('The nine-reading HORIBA layout could not be verified. Adjust the crop, confirm the exact screen layout, or enter readings manually.');
+ const rows=FIELDS.map(f=>{
+  const passes=readings[f.key]||[],decision=decisions?.[f.key]||null;
+  const proposed=decision?decision.value:consensus(f.key,passes);
+  const matched=!!layout.matched[f.key],rawLabel=normalizeLabel(labels[f.key]||'');
+  // Unit provenance is kept separate from numeric confidence. TDS must never
+  // be converted until OCR verified g/L or mg/L, or the user selected it.
+  const g=f.key==='tds'&&/^g\/LTDS$/i.test(rawLabel);
+  const mg=f.key==='tds'&&/^mg\/LTDS$/i.test(rawLabel);
+  const unitStatus=matched?'verified':layout.ok&&f.key!=='tds'?'inferred':'missing';
+  const sourceUnit=f.key==='tds'?(g?'g/L':mg?'mg/L':null):f.unit;
+  const sourceDisplay=proposed==null?null:(decision?.display??String(proposed));
+  const canUseNumber=matched||options.allowUnverified;
+  const ready=canUseNumber&&(!(f.key==='tds')||g||mg)?proposed:null;
+  const factor=f.key==='tds'&&g?1000:1;
+  const value=ready==null?null:+(ready*factor).toPrecision(10);
+  const display=ready==null?null:(f.key==='tds'&&g?String(ready*1000):sourceDisplay);
+  const messages=[];
+  if(unitStatus==='inferred')messages.push('INFERRED UNIT: '+f.unit+' is suggested from the verified nine-reading screen position, but OCR did not read its unit label. Check the actual unit on the photo before applying.');
+  if(unitStatus==='missing')messages.push(f.key==='tds'?
+   'MISSING / AMBIGUOUS TDS UNIT: g/L and mg/L are not interchangeable. No conversion was made. Select the unit actually visible in the photo to use the OCR candidate.':
+   'MISSING UNIT LABEL / UNVERIFIED SCREEN POSITION: verify the displayed unit and the nine-reading layout before applying.');
+  if(!layout.ok)messages.push('SCREEN LAYOUT NOT FULLY VERIFIED: confirm the exact nine-reading display.');
+  if(proposed==null)messages.push('NUMERIC READING UNRESOLVED: leave blank or type the value after checking the photo.');
+  else if(decision&&decision.reason!=='exact_agreement')messages.push('Experimental numeric suggestion ('+decision.reason.replace(/_/g,' ')+'): verify the digits and sign.');
+  return {key:f.key,label:f.label,unit:f.unit,value,display,sourceValue:proposed,sourceDisplay,sourceUnit,unitStatus,
+   reason:decision?.reason||null,raw:passes.map(p=>p.text).join(' / ')+' '+(labels[f.key]||''),
+   uncertain:ready==null||unitStatus!=='verified'||!layout.ok,
+   freshwater:f.key==='tds',
+   conversion:f.key==='tds'&&ready!=null?String(ready)+' '+sourceUnit+' → '+String(value)+' mg/L':'',
+   message:messages.join(' ')};
+ });
+ const missing=rows.filter(r=>r.unitStatus!=='verified').map(r=>r.key);
+ const warnings=[
+  layout.ok?'HORIBA nine-reading screen verified using the layout anchors. Individual unit labels may still be missing; review all units and numbers.':
+   'HORIBA NINE-READING LAYOUT NOT AUTOMATICALLY VERIFIED. Confirm the exact screen structure and every reading against the photo before using them.',
+  missing.length?'OCR did not verify the unit label for: '+missing.join(', ')+'. All affected values require manual verification.':'All parameter unit labels were recognized; confirm them against the photo anyway.',
+  'The meter clock has NOT been applied. Confirm the actual measurement date and time.'
+ ];
+ return {readings:rows,layout:{verified:layout.ok,matched:layout.matched,matchedCount:layout.matchedCount,anchorsVerified:layout.anchorsVerified,manualConfirmationRequired:!layout.ok},warnings};
 }
 function detect(cv,image){
  const mats=[];const keep=m=>(mats.push(m),m);const out=[];

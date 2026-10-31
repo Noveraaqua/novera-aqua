@@ -24,11 +24,11 @@ function syntheticDigits(count,negative=false){
 }
 check('Temperature isolated prefix requires visual digit count',()=>{
  const r=R.decide('temp',[p('27.85'),p('1 27.85',.88)],syntheticDigits(4));
- assert.equal(r.display,'27.85');assert.equal(r.reason,'visual_extraneous_prefix');assert.equal(r.review,true);
+ assert.equal(r.display,'27.85');assert.equal(r.reason,'visual_discard_isolated_prefix');assert.equal(r.review,true);
 });
 check('ORP malformed sign rejected when image has no minus',()=>{
  const r=R.decide('orp',[p('176'),p('-..176',.85)],syntheticDigits(3));
- assert.equal(r.display,'176');assert.equal(r.reason,'visual_malformed_sign_artifact');
+ assert.equal(r.display,'176');assert.equal(r.reason,'visual_reject_malformed_sign');
 });
 check('DO spurious negative rejected when image has no minus',()=>{
  const r=R.decide('do',[p('11.90'),p('-11.90')],syntheticDigits(4));
@@ -60,4 +60,28 @@ check('DO abstains if minus is visible',()=>assert.equal(R.decide('do',[p('11.90
 check('ORP abstains if minus is visible',()=>assert.equal(R.decide('orp',[p('176'),p('-..176')],fixture(3,true)).value,null));
 check('Temperature abstains if digit geometry mismatches',()=>assert.equal(R.decide('temp',[p('27.85'),p('1 27.85')],fixture(3)).value,null));
 
+
+function joinedDigitFixture(joined=true){
+ const width=400,height=190,data=new Uint8ClampedArray(width*height*4);data.fill(255);
+ const box=(x,y,w,h)=>{for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){const i=(yy*width+xx)*4;data[i]=data[i+1]=data[i+2]=0;}};
+ box(60,40,30,85);box(115,40,30,85);
+ if(joined){box(170,40,30,85);box(209,40,30,85);box(199,79,11,2);}
+ else box(170,40,69,85); // One solid wide glyph: no evidence of two digits.
+ return {width,height,data};
+}
+check('Merged temperature digits require a real internal valley',()=>{
+ const r=R.decide('temp',[p('27.85'),p('1 27.85')],joinedDigitFixture(true));
+ assert.equal(r.display,'27.85');assert.equal(r.reason,'visual_merged_digit_split');
+ assert.equal(r.visual.digitComponents,3);
+ assert.equal(r.visual.effectiveDigitComponents,4);
+ assert.equal(r.visual.mergedDigitBoxes.length,1);
+});
+check('One wide digit without valley cannot be split',()=>{
+ const r=R.decide('temp',[p('27.85'),p('1 27.85')],joinedDigitFixture(false));
+ assert.equal(r.value,null);
+ assert.equal(r.visual.mergedDigitBoxes.length,0);
+});
+check('Unusable visual input keeps temperature unresolved',()=>{
+ assert.equal(R.decide('temp',[p('27.85'),p('1 27.85')],null).value,null);
+});
 console.log(n+' reconciler checks passed');

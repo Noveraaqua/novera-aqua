@@ -1,8 +1,8 @@
 /* Browser-only OCR controller. Images and recognition text never enter application state. */
 (function(){
 'use strict';
-const VERSION='PaddleOCR-en-v3/esearch-8.5.0',EXPERIMENTAL_VERSION=VERSION+'+visual-reconcile-v2';
-const WORKER_URL=new URL('./horiba-worker.js',document.currentScript.src).href;
+const VERSION='PaddleOCR-en-v3/esearch-8.5.0',EXPERIMENTAL_VERSION=VERSION+'+visual-reconcile-v3-unit-review';
+const WORKER_URL=new URL('./horiba-worker.js?v=20261031-unit-review',document.currentScript.src).href;
 function attach(form,options){
  const host=form.querySelector('[data-photo-host]');if(!host)return;
  let disposed=false,generation=0,worker=null,activeInput=null,canvas=null,bitmap=null,applied=false,used=false,owned={},metadata=[],busy=false,cancelScan=null,activeTimer=null,lastOcrVersion=VERSION;
@@ -87,15 +87,51 @@ function attach(form,options){
  results.append(layoutConfirm);}
  const primary=el('div',{className:'photo-review'}),extra=el('div',{className:'photo-review'});results.append(primary,el('h3',{},'Additional readings'),extra);
   const diagnosticsBtn=el('button',{type:'button',className:'btn ghost sm'},'Download OCR diagnostics (text only)');results.append(diagnosticsBtn);
-  diagnosticsBtn.onclick=()=>{const log={version:lastOcrVersion,time:new Date().toISOString(),diagnostics:parsed.diagnostics||null,readings:parsed.readings.map(r=>({key:r.key,display:r.display,uncertain:r.uncertain,reason:r.reason,raw:r.raw}))};
+  diagnosticsBtn.onclick=()=>{const log={version:lastOcrVersion,time:new Date().toISOString(),diagnostics:parsed.diagnostics||null,readings:parsed.readings.map(r=>({key:r.key,display:r.display,uncertain:r.uncertain,reason:r.reason,raw:r.raw,unitStatus:r.unitStatus,sourceUnit:r.sourceUnit,sourceValue:r.sourceValue,sourceDisplay:r.sourceDisplay}))};
    const url=URL.createObjectURL(new Blob([JSON.stringify(log,null,2)],{type:'application/json'}));
    const a=el('a',{href:url,download:'novera-horiba-ocr-diagnostics.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);};
   rows=parsed.readings.map(r=>{
-   const card=el('div',{className:'photo-reading'}),label=el('label',{},r.label+' ('+r.unit+')'),i=el('input',{type:'number',step:'any',value:r.value==null?'':String(r.display??r.value)});i.setAttribute('aria-label','Photo '+r.label);label.append(i);card.append(label,el('small',{},'OCR: '+(r.raw||'No reliable candidate')));
-   if(r.uncertain)card.append(el('small',{className:'photo-warning'},'Uncertain: verify this measurement manually.'));if(r.conversion)card.append(el('small',{},r.conversion));if(r.message)card.append(el('small',{className:'photo-warning'},r.message));
-   if(r.key==='tds')card.append(el('small',{},'For dilute freshwater only: mg/L ≈ ppm. Do not use this assumption for saline samples.'));
-   const target=field(r.key);if(target){card.append(el('small',{},'Destination: '+r.label+' · '+options.range(r.key)));const warning=el('small',{className:'photo-warning'});card.append(warning);const warn=()=>{const judged=inputValue(i)==null?null:options.judge?.(r.key,inputValue(i));warning.textContent=judged&&judged.lvl?'Outside the configured target — verify this value against the photo.':'';};i.addEventListener('input',warn);warn();}
-   (target?primary:extra).append(card);return {r,input:i,target};
+   const card=el('div',{className:'photo-reading'}),label=el('label',{},r.label+' ('+r.unit+')');
+   const i=el('input',{type:'number',step:'any',value:r.value==null?'':String(r.display??r.value)});
+   i.setAttribute('aria-label','Photo '+r.label);label.append(i);
+   card.append(label,el('small',{},'OCR: '+(r.raw||'No reliable candidate')));
+   if(r.uncertain)card.append(el('small',{className:'photo-warning'},'Manual check required: numeric reading or unit not fully verified.'));
+   if(r.conversion)card.append(el('small',{},r.conversion));
+   if(r.message)card.append(el('small',{className:'photo-warning'},r.message));
+   let unitCheck=null,unitPicker=null;
+   if(r.unitStatus!=='verified'&&r.key!=='tds'){
+    const row=el('label',{className:'photo-review-confirm'});unitCheck=el('input',{type:'checkbox'});
+    row.append(unitCheck,document.createTextNode('I checked the photo and confirm '+r.label+' uses '+r.unit+'.'));
+    card.append(row);
+   }
+   if(r.key==='tds'){
+    card.append(el('small',{},'For dilute freshwater only: mg/L ≈ ppm. Do not use this assumption for saline samples.'));
+    if(r.unitStatus!=='verified'){
+     const prompt=el('label',{},'TDS source unit shown on the original meter photo');
+     unitPicker=el('select',{});unitPicker.setAttribute('aria-label','Verify TDS source unit from photo');
+     for(const [value,title] of [['','Select verified source unit'],['g/L','g/L (multiply by 1000)'],['mg/L','mg/L (no multiplication)']])
+      unitPicker.append(el('option',{value},title));
+     prompt.append(unitPicker);card.append(prompt);
+     const info=el('small',{className:'photo-warning'},'TDS is blank because the source unit could not be read. Select the actual unit seen in the photo.');
+     card.append(info);
+     unitPicker.onchange=()=>{
+      const v=r.sourceValue;
+      if(unitPicker.value&&v!=null&&Number.isFinite(v)){
+       i.value=String(+(v*(unitPicker.value==='g/L'?1000:1)).toPrecision(10));
+       info.textContent='Unit confirmed by user: '+r.sourceDisplay+' '+unitPicker.value+' → '+i.value+' mg/L (approximately ppm for dilute freshwater).';
+      }else if(!unitPicker.value){i.value='';info.textContent='TDS unit unverified: no conversion performed.';}
+     };
+    }
+   }
+   const target=field(r.key);
+   if(target){
+    card.append(el('small',{},'Destination: '+r.label+' · '+options.range(r.key)));
+    const warning=el('small',{className:'photo-warning'});card.append(warning);
+    const warn=()=>{const judged=inputValue(i)==null?null:options.judge?.(r.key,inputValue(i));warning.textContent=judged&&judged.lvl?'Outside the configured target — verify against the photo.':'';};
+    i.addEventListener('input',warn);warn();
+   }
+   (target?primary:extra).append(card);
+   return {r,input:i,target,unitCheck,unitPicker};
   });
   const check=(label)=>{const l=el('label',{className:'photo-review-confirm'}),i=el('input',{type:'checkbox'});l.append(i,document.createTextNode(label));results.append(l);return i;};
   const freshwater=check('This is dilute freshwater; use the displayed TDS conversion to ppm.');
@@ -104,19 +140,31 @@ function attach(form,options){
   const reviewed=check('I checked all chosen values and units against the photo.');
   const apply=el('button',{type:'button',className:'btn'},'Use reviewed readings');results.append(apply);
   results.oninput=e=>{applied=false;if(e.target!==reviewed)reviewed.checked=false;};
+  results.onchange=e=>{applied=false;if(e.target!==reviewed)reviewed.checked=false;};
   apply.onclick=()=>{
    if(layoutCheck&&!layoutCheck.checked){status.textContent='The instrument layout could not be verified by OCR. Confirm the nine-reading layout above, or cancel photo entry.';return;}
    if(!reviewed.checked){status.textContent='Review the readings and tick the confirmation first.';return;}
    const values=[],additional=[];
-   for(const row of rows){const {r,input,target}=row;if(input.value==='')continue;const n=Number(input.value);if(!Number.isFinite(n)||(n<0&&!['temp','orp','phmv'].includes(r.key))||(r.key==='ph'&&(n<0||n>14))){status.textContent='Check '+r.label+'.';return;}
-    if(r.key==='tds'&&r.freshwater&&!freshwater.checked){status.textContent='Confirm dilute freshwater before converting TDS to ppm, or leave TDS blank and enter it manually.';return;}
-    if(target)values.push({r,n,target});else additional.push(r.label+': '+n+' '+r.unit);
+   for(const row of rows){
+    const {r,input,target,unitCheck,unitPicker}=row;
+    if(input.value==='')continue;
+    const n=Number(input.value);
+    if(!Number.isFinite(n)||(n<0&&!['temp','orp','phmv'].includes(r.key))||(r.key==='ph'&&(n<0||n>14))){status.textContent='Check '+r.label+'.';return;}
+    if(unitCheck&&!unitCheck.checked){status.textContent='Check the original photo and confirm the unit for '+r.label+', or leave this field blank.';return;}
+    if(unitPicker&&!unitPicker.value){status.textContent='Select the TDS source unit visible in the photo (g/L or mg/L), or leave TDS blank.';return;}
+    if(r.key==='tds'&&r.freshwater&&!freshwater.checked){status.textContent='Confirm dilute freshwater before treating TDS mg/L as approximately ppm, or leave TDS blank.';return;}
+    if(target)values.push({r,n,target,unitStatus:r.unitStatus,sourceUnit:unitPicker?.value||r.sourceUnit});
+    else additional.push(r.label+': '+n+' '+r.unit);
    }
    if(!values.length){status.textContent='Enter at least one supported reading to use, or cancel photo entry and log manually.';return;}
    if(!overwrite.checked&&values.some(v=>v.target.value!==''&&Number(v.target.value)!==v.n)){status.textContent='Some fields already contain values. Tick Replace populated fields to overwrite them, or keep those photo fields blank.';return;}
    if(notes.checked&&additional.length&&field('note').value&&!overwrite.checked){status.textContent='The notes field already contains text. Confirm replacement to append the additional readings.';return;}
    restoreOwned();
-   for(const {r,n,target} of values){const entered=rows.find(row=>row.r===r).input.value;owned[r.key]={before:target.value,after:entered};target.value=entered;metadata.push({parameter:r.key,unit:r.unit,conversion:r.freshwater?'mg/L approximately ppm; dilute freshwater confirmed':'none'});}
+   for(const {r,n,target,unitStatus,sourceUnit} of values){
+    const entered=rows.find(row=>row.r===r).input.value;
+    owned[r.key]={before:target.value,after:entered};target.value=entered;
+    metadata.push({parameter:r.key,unit:r.unit,sourceUnit:sourceUnit||null,ocrUnitStatus:unitStatus,userVerifiedUnit:true,conversion:r.freshwater?'mg/L approximately ppm; dilute freshwater confirmed':'none'});
+   }
    if(notes.checked&&additional.length){const target=field('note');owned.note={before:target.value,after:[target.value,'Photo additional readings: '+additional.join('; ')].filter(Boolean).join('\n')};target.value=owned.note.after;}
    applied=true;status.textContent='Readings placed in the form. Confirm the actual measurement date, time and officer below, then Save test.';
    const dateCheck=form.querySelector('[data-measurement-confirm]');if(dateCheck)dateCheck.checked=false;

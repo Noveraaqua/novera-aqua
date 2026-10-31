@@ -3,8 +3,13 @@ on:
   push:
     branches: [horiba-ocr-test-2026-10]
     paths:
+      - 'assets/horiba-core.js'
       - 'assets/horiba-reconcile.js'
-      - 'tests/horiba-reconcile.cjs'
+      - 'assets/horiba-pipeline.js'
+      - 'assets/horiba-photo-ui.js'
+      - 'assets/horiba-photo.css'
+      - 'index.html'
+      - 'tests/horiba-*.cjs'
       - '.github/workflows/horiba-reconcile-regression.yml'
   workflow_dispatch:
 permissions:
@@ -17,9 +22,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run existing and experimental OCR checks
+      - name: Syntax checks
+        run: |
+          node --check assets/horiba-core.js
+          node --check assets/horiba-reconcile.js
+          node --check assets/horiba-pipeline.js
+          node --check assets/horiba-photo-ui.js
+          node --check assets/horiba-worker.js
+      - name: Unit and regression checks
         run: |
           node tests/horiba-core.cjs
           node tests/horiba-reconcile.cjs
           node tests/horiba-photo-switch.cjs
           node tests/horiba-partial-layout.cjs
+          node tests/horiba-unit-review.cjs

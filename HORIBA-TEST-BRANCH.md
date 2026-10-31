@@ -32,3 +32,12 @@ node tests/horiba-photo-switch.cjs
 ```
 
 Report: browser/device and OS version, sample photo ID, extracted readings, wrong or blank fields, runtime errors, and whether Cancel, Review, and Save behaved as expected. Do not record real measurements during testing without reviewing them against the photograph.
+
+## Unit verification and temperature segmentation update (31 October 2026)
+
+- Experimental numeric segmentation now records digit bounding boxes and only splits a merged digit component when a narrow ink-density valley provides supporting evidence. Incorrect or insufficient evidence leaves the number unresolved. This is not an exact-value lookup or hidden ground-truth override.
+- Additional narrow-label OCR crops are attempted for missing temperature, pH and TDS labels. The diagnostics include each attempted region, text and confidence.
+- Each reading distinguishes **unit verified by OCR**, **unit inferred from a verified nine-reading layout**, and **unit missing**. Inferred or missing temperature/pH/etc. units display explicit warnings and a per-parameter unit confirmation checkbox.
+- Missing or ambiguous TDS units **never** trigger automatic g/L-to-mg/L conversion. The reading stays blank until the operator checks the original photograph and explicitly selects g/L or mg/L. Conversions are shown, and the existing freshwater-ppm acknowledgement remains mandatory.
+- The operator must still review chosen readings, verify units, confirm layout when required, explicitly apply values, and confirm measurement date/time before saving. No background storage or uploaded photo was added.
+- Use **Try experimental visual reconciliation** for this update and export diagnostics tagged `visual-reconcile-v3-unit-review`. Old JSON files do not test the new rules. Do not merge to main until fresh end-to-end tests on seven originals plus unseen photos and mobile use are complete.

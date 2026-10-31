@@ -42,8 +42,27 @@ function visualEvidence(im){if(!im||!im.data||!Number.isInteger(im.width)||!Numb
   if(size>=25&&x0>20&&x1<w-20&&cw<=w*.65&&ch<=h*.68)components.push({x:x0,y:y0,w:cw,h:ch});
  }
  const digits=components.filter(c=>c.h>=65&&c.w>=25).sort((a,b)=>a.x-b.x);
+ // Find digit-like components joined by a thin stroke. An internal vertical
+ // ink-density valley is stronger evidence than simply allowing one fewer box.
+ // A single wide glyph without such a valley MUST NOT count as two digits.
+ const widths=digits.map(c=>c.w).sort((a,b)=>a-b),normalWidth=widths.length?widths[Math.floor((widths.length-1)/2)]:0;
+ const mergedDigitBoxes=[];
+ for(const c of digits){
+  if(digits.length<2||c.w<Math.max(58,normalWidth*1.60)||c.w>normalWidth*2.85)continue;
+  const projection=new Array(c.w).fill(0);
+  for(let x=0;x<c.w;x++)for(let y=c.y;y<c.y+c.h;y++)if(pixels[y*w+c.x+x]<=cut)projection[x]++;
+  const peak=Math.max(...projection),start=Math.floor(c.w*.30),end=Math.ceil(c.w*.70);
+  let split=-1,low=Infinity;
+  for(let x=start;x<end;x++)if(projection[x]<low){low=projection[x];split=x;}
+  const left=projection.slice(0,split).reduce((a,b)=>a+b,0);
+  const right=projection.slice(split+1).reduce((a,b)=>a+b,0);
+  if(split>0&&peak>0&&low<=Math.max(2,peak*.32)&&left>peak*5&&right>peak*5)
+   mergedDigitBoxes.push({x:c.x,y:c.y,w:c.w,h:c.h,splitX:c.x+split,valleyRatio:+(low/peak).toFixed(3)});
+ }
  let minus=false;if(digits.length){const d=digits[0];minus=components.some(c=>c.x+c.w<=d.x-5&&c.h>=12&&c.h<=27&&c.w>=25&&c.w<=65&&c.w/c.h>=1.5&&c.w/c.h<=4.5&&c.y+c.h/2>=d.y+d.h*.32&&c.y+c.h/2<=d.y+d.h*.68);}
- return {status:'evaluated',minusShape:minus,digitComponents:digits.length,componentCount:components.length};
+ return {status:'evaluated',minusShape:minus,digitComponents:digits.length,
+  effectiveDigitComponents:digits.length+(mergedDigitBoxes.length===1?1:0),
+  digitBoxes:digits.map(c=>({...c})),mergedDigitBoxes,componentCount:components.length};
 }
 function decide(key,passes,im){const base=compare(key,passes);
  if(base.value!==null||base.reason==='low_recognition_score')return {...base,visual:null};
@@ -60,9 +79,13 @@ function decide(key,passes,im){const base=compare(key,passes);
  }
  if(cs.filter(c=>c!==null).length===1){
   const i=cs[0]!==null?0:1,candidate=cs[i],other=String(passes[1-i].text||'').trim().replace(/[−–]/g,'-').replace(/["' :;]+$/,'');
-  if(ev.digitComponents!==count(candidate))return {...base,visual:ev};
+  const exactDigitCount=ev.digitComponents===count(candidate);
+  const mergedTemperature=key==='temp'&&ev.digitComponents===count(candidate)-1&&
+   ev.effectiveDigitComponents===count(candidate)&&ev.mergedDigitBoxes.length===1;
+  if(!exactDigitCount&&!mergedTemperature)return {...base,visual:ev};
   if(['ph','saturation'].includes(key)&&other&&(candidate.endsWith(other)||candidate.replace('.','').endsWith(other.replace('.',''))))return accept(candidate,'visual_digit_count_corroborated');
-  if(key==='temp'&&other===('1 '+candidate)&&!ev.minusShape)return accept(candidate,'visual_discard_isolated_prefix');
+  if(key==='temp'&&other===('1 '+candidate)&&!ev.minusShape)
+   return accept(candidate,mergedTemperature?'visual_merged_digit_split':'visual_discard_isolated_prefix');
   if(key==='do'&&other===('-'+candidate)&&!ev.minusShape)return accept(candidate,'visual_spurious_minus');
   if(key==='orp'&&/^-[.\s]+/.test(other)&&other.replace(/^-[.\s]+/,'')===candidate&&!ev.minusShape)return accept(candidate,'visual_reject_malformed_sign');
  }
