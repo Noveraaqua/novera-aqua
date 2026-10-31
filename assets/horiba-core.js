@@ -46,7 +46,7 @@ function parse(readings,labels,spare,decisions=null,options={}){
   const messages=[];
   if(unitStatus==='inferred')messages.push('INFERRED UNIT: '+f.unit+' is suggested from the verified nine-reading screen position, but OCR did not read its unit label. Check the actual unit on the photo before applying.');
   if(unitStatus==='missing')messages.push(f.key==='tds'?
-   'MISSING / AMBIGUOUS TDS UNIT: g/L and mg/L are not interchangeable. No conversion was made. Select the unit actually visible in the photo to use the OCR candidate.':
+   'TDS UNIT COULD NOT BE VERIFIED (MISSING / AMBIGUOUS): g/L and mg/L are not interchangeable. No conversion was made. Select the unit actually visible in the photo to use the OCR candidate.':
    'MISSING UNIT LABEL / UNVERIFIED SCREEN POSITION: verify the displayed unit and the nine-reading layout before applying.');
   if(!layout.ok)messages.push('SCREEN LAYOUT NOT FULLY VERIFIED: confirm the exact nine-reading display.');
   if(proposed==null)messages.push('NUMERIC READING UNRESOLVED: leave blank or type the value after checking the photo.');

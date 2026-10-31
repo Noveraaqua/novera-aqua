@@ -34,7 +34,7 @@ test('No verified TDS unit means no automatic conversion',()=>{
  assert.equal(x.sourceDisplay,'0.177');
  assert.equal(x.unitStatus,'missing');
  assert.equal(x.sourceUnit,null);
- assert.match(x.message,/MISSING \/ AMBIGUOUS TDS UNIT/);
+ assert.match(x.message,/UNIT COULD NOT BE VERIFIED/);
 });
 test('TDS g/L converts once when label verified',()=>{
  const r=core.parse({tds:p('0.177')},labels,[],null,{allowUnverified:true});
