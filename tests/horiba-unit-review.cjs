@@ -152,12 +152,13 @@ test('Fixed TDS unit is opt-in; standard mode keeps strict unit verification',()
  assert.equal(find(r,'tds').unitStatus,'missing');
  assert.equal(find(r,'tds').sourceUnit,null);
 });
-test('Experimental pipeline skips TDS unit OCR and opts into fixed g/L',()=>{
+test('Both standard and experimental HORIBA scans skip TDS unit OCR and assume g/L',()=>{
  const src=fs.readFileSync(require.resolve('../assets/horiba-pipeline.js'),'utf8');
- assert(src.includes("if(experimental&&f.key==='tds')"));
+ assert(src.includes("if(f.key==='tds')"));
+ assert(!src.includes("if(experimental&&f.key==='tds')"));
  assert(src.includes("labels.tds='';labelAttempts.tds=[];continue;"));
- assert(src.includes("fixedTdsUnit:'g/L'"));
- assert(src.includes("tdsUnitMode:experimental?'assumed_configured_g/L'"));
+ assert(src.includes("experimental?decisions:null,{allowUnverified:true,fixedTdsUnit:'g/L'}"));
+ assert(src.includes("tdsUnitMode:'assumed_configured_g/L'"));
 });
 test('Review UI shows assumed TDS provenance and requires explicit confirmation',()=>{
  const src=fs.readFileSync(require.resolve('../assets/horiba-photo-ui.js'),'utf8');
@@ -168,4 +169,11 @@ test('Review UI shows assumed TDS provenance and requires explicit confirmation'
  assert(src.includes("r.key==='tds'&&r.freshwater&&!freshwater.checked"));
 });
 
+test('Configured source unit never fills unresolved standard or experimental TDS number',()=>{
+ const l={...labels,tds:''};
+ for(const decision of [null,{tds:{value:null,display:null,reason:'conflicting_digits'}}]){
+  const r=core.parse({tds:[{text:'0.223',score:.99},{text:'0.224',score:.99}]},l,[],decision,{allowUnverified:true,fixedTdsUnit:'g/L'});
+  const x=find(r,'tds');assert.equal(x.value,null);assert.equal(x.display,null);
+ }
+});
 console.log(passed+' unit-review checks passed');
