@@ -1,0 +1,37 @@
+name: HORIBA configured TDS g/L safety regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/horiba-core.js'
+      - 'assets/horiba-pipeline.js'
+      - 'assets/horiba-photo-ui.js'
+      - 'assets/horiba-worker.js'
+      - 'tests/horiba-*.cjs'
+      - 'index.html'
+      - '.github/workflows/horiba-main-unit-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax checks
+        run: |
+          node --check assets/horiba-core.js
+          node --check assets/horiba-pipeline.js
+          node --check assets/horiba-photo-ui.js
+          node --check assets/horiba-worker.js
+          node --check assets/horiba-reconcile.js
+      - name: OCR safety and regression tests
+        run: |
+          node tests/horiba-core.cjs
+          node tests/horiba-partial-layout.cjs
+          node tests/horiba-reconcile.cjs
+          node tests/horiba-photo-switch.cjs
+          node tests/horiba-unit-review.cjs

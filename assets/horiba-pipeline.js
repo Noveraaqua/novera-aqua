@@ -9,6 +9,11 @@ async function run(cv,image,read,manual=false,progress=()=>{},experimental=false
  for(let attempt=0;attempt<candidates.length;attempt++){
  const trial=core.warp(cv,image,candidates[attempt].q);labels={};spare=[];labelAttempts={};
  for(const f of core.FIELDS){
+ // This specific HORIBA meter is configured to display TDS only in g/L.
+ // Never OCR the TDS unit label or count it as a verified screen label.
+ if(f.key==='tds'){
+  labels.tds='';labelAttempts.tds=[];continue;
+ }
  const top=.300+f.row*.097,rect=[f.col?.735:.285,top,f.col?.97:.49,top+.095];
  labels[f.key]='';labelAttempts[f.key]=[];
  const readLabel=async(box,binary,direct=false)=>{
@@ -21,8 +26,8 @@ async function run(cv,image,read,manual=false,progress=()=>{},experimental=false
  }
  // Re-scan only the tiny labels that repeatedly went missing in the seven-photo
  // benchmark; do not guess units from neighbouring readings or expected values.
- if(experimental&&!labels[f.key]&&['temp','ph','tds'].includes(f.key)){
-  const x=f.key==='tds'?[.712,.975]:f.key==='temp'?[.302,.485]:[.286,.49];
+ if(experimental&&!labels[f.key]&&['temp','ph'].includes(f.key)){
+  const x=f.key==='temp'?[.302,.485]:[.286,.49];
   const boxes=[[x[0],top+.010,x[1],top+.088],[x[0]+.018,top+.021,x[1],top+.080]];
   for(const box of boxes){await readLabel(box,false,true);if(labels[f.key])break;await readLabel(box,true);if(labels[f.key])break;}
  }
@@ -45,8 +50,8 @@ async function run(cv,image,read,manual=false,progress=()=>{},experimental=false
  if(experimental){const visual=core.crop(cv,screen,HoribaReconcile.visualRegions[f.key]);decisions[f.key]=HoribaReconcile.decide(f.key,readings[f.key],visual);}
  progress({message:'Reading '+f.label+'…',progress:.4+(++done/9)*.55});
  }
- const result=core.parse(readings,labels,spare,experimental?decisions:null,{allowUnverified:true});
- result.diagnostics={mode:best.manual?'user_crop':'automatic',detectorScore:best.detectorScore,layout:result.layout,unitLabels:labels,unitLabelAttempts:best.labelAttempts,spareOcr:spare,fields:core.FIELDS.map(f=>({key:f.key,passes:readings[f.key],decision:experimental?decisions[f.key]:null}))};
+ const result=core.parse(readings,labels,spare,experimental?decisions:null,{allowUnverified:true,fixedTdsUnit:'g/L'});
+ result.diagnostics={mode:best.manual?'user_crop':'automatic',detectorScore:best.detectorScore,layout:result.layout,unitLabels:labels,unitLabelAttempts:best.labelAttempts,tdsUnitMode:'assumed_configured_g/L',spareOcr:spare,fields:core.FIELDS.map(f=>({key:f.key,passes:readings[f.key],decision:experimental?decisions[f.key]:null}))};
 
 return {result,screen};
 }

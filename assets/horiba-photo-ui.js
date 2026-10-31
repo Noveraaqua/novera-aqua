@@ -1,8 +1,8 @@
 /* Browser-only OCR controller. Images and recognition text never enter application state. */
 (function(){
 'use strict';
-const VERSION='PaddleOCR-en-v3/esearch-8.5.0',EXPERIMENTAL_VERSION=VERSION+'+visual-reconcile-v3-unit-review';
-const WORKER_URL=new URL('./horiba-worker.js?v=20261031-unit-review',document.currentScript.src).href;
+const VERSION='PaddleOCR-en-v3/esearch-8.5.0+configured-tds-gl-v2',EXPERIMENTAL_VERSION=VERSION+'+visual-reconcile-v3';
+const WORKER_URL=new URL('./horiba-worker.js?v=20261031-configured-tds-gl-v2',document.currentScript.src).href;
 function attach(form,options){
  const host=form.querySelector('[data-photo-host]');if(!host)return;
  let disposed=false,generation=0,worker=null,activeInput=null,canvas=null,bitmap=null,applied=false,used=false,owned={},metadata=[],busy=false,cancelScan=null,activeTimer=null,lastOcrVersion=VERSION;
@@ -10,7 +10,7 @@ function attach(form,options){
  const el=(tag,props={},text)=>{const n=document.createElement(tag);Object.assign(n,props);if(text!=null)n.textContent=text;return n;};
  const launch=el('button',{type:'button',className:'btn ghost'},'Read from photo');host.append(launch);
  const panel=el('section',{className:'photo-panel',hidden:true});host.append(panel);
- panel.innerHTML='<h3>Read from photo</h3><p class="sub">Your photo is processed on this device. Only confirmed readings are saved.</p><p class="sub">Choose a sharp photo. Avoid glare and include the parameter labels and units. HORIBA nine-reading display only. Screen alignment is automatic; use Adjust photo if it cannot find the screen.</p><div class="photo-actions"><label>Choose image <input data-file type="file" accept="image/jpeg,image/png,image/webp"></label><label>Take photo <input data-camera type="file" accept="image/*" capture="environment"></label></div><div class="photo-preview" hidden><canvas aria-label="Temporary meter photo"></canvas><div class="photo-box"></div></div><div data-image-controls hidden><label class="photo-review-confirm"><input type="checkbox" data-experimental> Try experimental visual reconciliation (manual review required)</label><details data-adjust><summary>Adjust photo</summary><label class="photo-review-confirm"><input type="checkbox" data-manual> My crop contains only the LCD, upright (skip automatic screen detection)</label><div class="photo-sliders"></div><div class="photo-actions"><button type="button" data-rotate class="btn ghost sm">Rotate 90°</button><button type="button" data-full class="btn ghost sm">Whole image</button></div></details><button type="button" data-run class="btn">Scan HORIBA screen</button></div><progress max="1" value="0" hidden></progress><p data-status role="status" aria-live="polite"></p><div data-results></div><div class="photo-actions"><button type="button" data-stop class="btn ghost" hidden>Stop recognition</button><button type="button" data-cancel class="btn ghost">Cancel photo entry</button></div>';
+ panel.innerHTML='<h3>Read from photo</h3><p class="sub">Your photo is processed on this device. Only confirmed readings are saved.</p><p class="sub">Choose a sharp photo. Avoid glare and include the meter screen and parameter labels. This configured HORIBA meter is assumed to display TDS in g/L. HORIBA nine-reading display only. Screen alignment is automatic; use Adjust photo if it cannot find the screen.</p><div class="photo-actions"><label>Choose image <input data-file type="file" accept="image/jpeg,image/png,image/webp"></label><label>Take photo <input data-camera type="file" accept="image/*" capture="environment"></label></div><div class="photo-preview" hidden><canvas aria-label="Temporary meter photo"></canvas><div class="photo-box"></div></div><div data-image-controls hidden><label class="photo-review-confirm"><input type="checkbox" data-experimental> Try experimental visual reconciliation (manual review required)</label><details data-adjust><summary>Adjust photo</summary><label class="photo-review-confirm"><input type="checkbox" data-manual> My crop contains only the LCD, upright (skip automatic screen detection)</label><div class="photo-sliders"></div><div class="photo-actions"><button type="button" data-rotate class="btn ghost sm">Rotate 90°</button><button type="button" data-full class="btn ghost sm">Whole image</button></div></details><button type="button" data-run class="btn">Scan HORIBA screen</button></div><progress max="1" value="0" hidden></progress><p data-status role="status" aria-live="polite"></p><div data-results></div><div class="photo-actions"><button type="button" data-stop class="btn ghost" hidden>Stop recognition</button><button type="button" data-cancel class="btn ghost">Cancel photo entry</button></div>';
  const q=s=>panel.querySelector(s),status=q('[data-status]'),preview=q('.photo-preview'),box=q('.photo-box'),controls=q('[data-image-controls]'),results=q('[data-results]'),progress=q('progress');
  const workspace=el('div',{className:'photo-workspace'});panel.insertBefore(workspace,controls);workspace.append(preview,results);
  canvas=q('canvas');let crop={left:0,top:0,right:100,bottom:100},rows=[];
@@ -87,7 +87,7 @@ function attach(form,options){
  results.append(layoutConfirm);}
  const primary=el('div',{className:'photo-review'}),extra=el('div',{className:'photo-review'});results.append(primary,el('h3',{},'Additional readings'),extra);
   const diagnosticsBtn=el('button',{type:'button',className:'btn ghost sm'},'Download OCR diagnostics (text only)');results.append(diagnosticsBtn);
-  diagnosticsBtn.onclick=()=>{const log={version:lastOcrVersion,time:new Date().toISOString(),diagnostics:parsed.diagnostics||null,readings:parsed.readings.map(r=>({key:r.key,display:r.display,uncertain:r.uncertain,reason:r.reason,raw:r.raw,unitStatus:r.unitStatus,sourceUnit:r.sourceUnit,sourceValue:r.sourceValue,sourceDisplay:r.sourceDisplay}))};
+  diagnosticsBtn.onclick=()=>{const log={version:lastOcrVersion,time:new Date().toISOString(),diagnostics:parsed.diagnostics||null,readings:parsed.readings.map(r=>({key:r.key,display:r.display,uncertain:r.uncertain,reason:r.reason,raw:r.raw,unitStatus:r.unitStatus,sourceUnit:r.sourceUnit,sourceValue:r.sourceValue,sourceDisplay:r.sourceDisplay,unitMode:r.unitStatus==='assumed'?'configured_meter':r.unitStatus}))};
    const url=URL.createObjectURL(new Blob([JSON.stringify(log,null,2)],{type:'application/json'}));
    const a=el('a',{href:url,download:'novera-horiba-ocr-diagnostics.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);};
   rows=parsed.readings.map(r=>{
@@ -99,6 +99,9 @@ function attach(form,options){
    if(r.conversion)card.append(el('small',{},r.conversion));
    if(r.message)card.append(el('small',{className:'photo-warning'},r.message));
    let unitCheck=null,unitPicker=null;
+   const configuredTds=r.key==='tds'&&r.unitStatus==='assumed'&&r.sourceUnit==='g/L';
+   // Non-configured scans still need source-unit OCR or explicit user selection.
+   const tdsUnitRequiresReview=r.key==='tds'&&!configuredTds&&!(r.unitStatus==='verified'&&['g/L','mg/L'].includes(r.sourceUnit));
    if(r.unitStatus!=='verified'&&r.key!=='tds'){
     const row=el('label',{className:'photo-review-confirm'});unitCheck=el('input',{type:'checkbox'});
     row.append(unitCheck,document.createTextNode('I checked the photo and confirm '+r.label+' uses '+r.unit+'.'));
@@ -106,20 +109,28 @@ function attach(form,options){
    }
    if(r.key==='tds'){
     card.append(el('small',{},'For dilute freshwater only: mg/L ≈ ppm. Do not use this assumption for saline samples.'));
-    if(r.unitStatus!=='verified'){
+    if(configuredTds){
+     const row=el('label',{className:'photo-review-confirm'});unitCheck=el('input',{type:'checkbox'});
+     row.append(unitCheck,document.createTextNode('I confirm this photo is from the configured HORIBA meter, which displays TDS in g/L.'));
+     card.append(row);
+    }
+    if(tdsUnitRequiresReview){
+     i.value='';i.disabled=true; // Do not allow a converted value before source-unit selection.
      const prompt=el('label',{},'TDS source unit shown on the original meter photo');
      unitPicker=el('select',{});unitPicker.setAttribute('aria-label','Verify TDS source unit from photo');
      for(const [value,title] of [['','Select verified source unit'],['g/L','g/L (multiply by 1000)'],['mg/L','mg/L (no multiplication)']])
       unitPicker.append(el('option',{value},title));
      prompt.append(unitPicker);card.append(prompt);
-     const info=el('small',{className:'photo-warning'},'TDS is blank because the source unit could not be read. Select the actual unit seen in the photo.');
+     const info=el('small',{className:'photo-warning'},'TDS is blank: source unit unverified. Check the photograph and explicitly select g/L or mg/L before conversion.');
      card.append(info);
      unitPicker.onchange=()=>{
       const v=r.sourceValue;
+      i.value='';i.disabled=!unitPicker.value;
       if(unitPicker.value&&v!=null&&Number.isFinite(v)){
        i.value=String(+(v*(unitPicker.value==='g/L'?1000:1)).toPrecision(10));
        info.textContent='Unit confirmed by user: '+r.sourceDisplay+' '+unitPicker.value+' → '+i.value+' mg/L (approximately ppm for dilute freshwater).';
-      }else if(!unitPicker.value){i.value='';info.textContent='TDS unit unverified: no conversion performed.';}
+      }else if(unitPicker.value){info.textContent='Source unit confirmed, but OCR digits unresolved. Enter the reviewed mg/L value manually or leave blank.';}
+      else{info.textContent='TDS unit unverified: no conversion performed.';}
      };
     }
    }
@@ -151,7 +162,8 @@ function attach(form,options){
     const n=Number(input.value);
     if(!Number.isFinite(n)||(n<0&&!['temp','orp','phmv'].includes(r.key))||(r.key==='ph'&&(n<0||n>14))){status.textContent='Check '+r.label+'.';return;}
     if(unitCheck&&!unitCheck.checked){status.textContent='Check the original photo and confirm the unit for '+r.label+', or leave this field blank.';return;}
-    if(unitPicker&&!unitPicker.value){status.textContent='Select the TDS source unit visible in the photo (g/L or mg/L), or leave TDS blank.';return;}
+    if(r.key==='tds'&&!['g/L','mg/L'].includes(unitPicker?.value||r.sourceUnit)){status.textContent='Verify the TDS source unit or leave TDS blank.';return;}
+    if(unitPicker&&!unitPicker.value){status.textContent='Confirm the TDS source unit before using the reading, or leave TDS blank.';return;}
     if(r.key==='tds'&&r.freshwater&&!freshwater.checked){status.textContent='Confirm dilute freshwater before treating TDS mg/L as approximately ppm, or leave TDS blank.';return;}
     if(target)values.push({r,n,target,unitStatus:r.unitStatus,sourceUnit:unitPicker?.value||r.sourceUnit});
     else additional.push(r.label+': '+n+' '+r.unit);
