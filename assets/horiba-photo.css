@@ -1,0 +1,11 @@
+.photo-engine-chooser{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:12px}
+.photo-engine-chooser p,.photo-engine-chooser small{flex-basis:100%;margin:0}
+.photo-workspace.has-results{display:grid;grid-template-columns:minmax(200px,1fr) minmax(260px,1fr);gap:16px;align-items:start}
+.photo-workspace.has-results .photo-preview{position:sticky;top:10px}
+.photo-workspace.has-results .photo-review{grid-template-columns:1fr}
+@media(max-width:650px){.photo-workspace.has-results{display:block}.photo-workspace.has-results .photo-preview{position:relative;top:auto;margin:auto}}
+
+/* Per-reading unit verification remains readable on narrow phone displays. */
+.photo-reading select{display:block;width:100%;max-width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.photo-reading label.photo-review-confirm{display:flex;align-items:flex-start;gap:8px;margin:10px 0}
+.photo-reading .photo-warning{display:block;margin:6px 0;overflow-wrap:anywhere}

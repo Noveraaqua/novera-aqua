@@ -1,0 +1,44 @@
+name: HORIBA OCR safety checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/horiba-*.js'
+      - 'assets/horiba-photo.css'
+      - 'tests/horiba-*.cjs'
+      - 'index.html'
+      - '.github/workflows/horiba-ocr-checks.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'assets/horiba-*.js'
+      - 'assets/horiba-photo.css'
+      - 'tests/horiba-*.cjs'
+      - 'index.html'
+      - '.github/workflows/horiba-ocr-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check OCR JavaScript syntax
+        run: |
+          node --check assets/horiba-core.js
+          node --check assets/horiba-reconcile.js
+          node --check assets/horiba-pipeline.js
+          node --check assets/horiba-photo-ui.js
+          node --check assets/horiba-photo-switch.js
+          node --check assets/horiba-worker.js
+      - name: Run HORIBA OCR safety regression tests
+        run: |
+          node tests/horiba-core.cjs
+          node tests/horiba-reconcile.cjs
+          node tests/horiba-photo-switch.cjs
+          node tests/horiba-partial-layout.cjs
+          node tests/horiba-unit-review.cjs
