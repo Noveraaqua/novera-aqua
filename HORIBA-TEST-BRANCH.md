@@ -41,3 +41,11 @@ Report: browser/device and OS version, sample photo ID, extracted readings, wron
 - Missing or ambiguous TDS units **never** trigger automatic g/L-to-mg/L conversion. The reading stays blank until the operator checks the original photograph and explicitly selects g/L or mg/L. Conversions are shown, and the existing freshwater-ppm acknowledgement remains mandatory.
 - The operator must still review chosen readings, verify units, confirm layout when required, explicitly apply values, and confirm measurement date/time before saving. No background storage or uploaded photo was added.
 - Use **Try experimental visual reconciliation** for this update and export diagnostics tagged `visual-reconcile-v3-unit-review`. Old JSON files do not test the new rules. Do not merge to main until fresh end-to-end tests on seven originals plus unseen photos and mobile use are complete.
+
+## Strict TDS unit safety patch (31 October 2026)
+
+- TDS label detection, `layout.matched.tds`, `unitStatus`, `sourceUnit`, and numerical conversion now use one exact source-unit classifier. Only `g/L TDS` or `mg/L TDS` (case/spacing-insensitive) permits automated conversion.
+- Ambiguous labels such as `Y g/L TDS`, `} g/L TDS`, and `S/L TDS` stay **missing**, not OCR-verified. The original numeric OCR candidate remains available for review but the converted TDS output is blank.
+- The photo review always shows a source-unit selector when TDS lacks a valid verified source unit, even if contradictory status metadata appears. The TDS value cannot be entered before source-unit selection; changing/clearing selection clears the proposed conversion.
+- All selected readings and freshwater approximations still require human confirmation before applying; no changes are made to existing records, the standard scanner, or `main` by this patch.
+- Diagnostics from the patch carry `visual-reconcile-v3-unit-review-tds-fix1`. Test both ambiguous source labels and valid g/L / mg/L meter labels before release.

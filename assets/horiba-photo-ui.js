@@ -1,8 +1,8 @@
 /* Browser-only OCR controller. Images and recognition text never enter application state. */
 (function(){
 'use strict';
-const VERSION='PaddleOCR-en-v3/esearch-8.5.0',EXPERIMENTAL_VERSION=VERSION+'+visual-reconcile-v3-unit-review';
-const WORKER_URL=new URL('./horiba-worker.js?v=20261031-unit-review',document.currentScript.src).href;
+const VERSION='PaddleOCR-en-v3/esearch-8.5.0',EXPERIMENTAL_VERSION=VERSION+'+visual-reconcile-v3-unit-review-tds-fix1';
+const WORKER_URL=new URL('./horiba-worker.js?v=20261031-tds-fix1',document.currentScript.src).href;
 function attach(form,options){
  const host=form.querySelector('[data-photo-host]');if(!host)return;
  let disposed=false,generation=0,worker=null,activeInput=null,canvas=null,bitmap=null,applied=false,used=false,owned={},metadata=[],busy=false,cancelScan=null,activeTimer=null,lastOcrVersion=VERSION;
@@ -99,6 +99,9 @@ function attach(form,options){
    if(r.conversion)card.append(el('small',{},r.conversion));
    if(r.message)card.append(el('small',{className:'photo-warning'},r.message));
    let unitCheck=null,unitPicker=null;
+   // Defence in depth: even an inconsistent producer cannot silently convert
+   // TDS without a verified g/L or mg/L source unit.
+   const tdsUnitRequiresReview=r.key==='tds'&&!(r.unitStatus==='verified'&&['g/L','mg/L'].includes(r.sourceUnit));
    if(r.unitStatus!=='verified'&&r.key!=='tds'){
     const row=el('label',{className:'photo-review-confirm'});unitCheck=el('input',{type:'checkbox'});
     row.append(unitCheck,document.createTextNode('I checked the photo and confirm '+r.label+' uses '+r.unit+'.'));
@@ -106,20 +109,23 @@ function attach(form,options){
    }
    if(r.key==='tds'){
     card.append(el('small',{},'For dilute freshwater only: mg/L ≈ ppm. Do not use this assumption for saline samples.'));
-    if(r.unitStatus!=='verified'){
+    if(tdsUnitRequiresReview){
+     i.value='';i.disabled=true; // Do not allow a converted value before source-unit selection.
      const prompt=el('label',{},'TDS source unit shown on the original meter photo');
      unitPicker=el('select',{});unitPicker.setAttribute('aria-label','Verify TDS source unit from photo');
      for(const [value,title] of [['','Select verified source unit'],['g/L','g/L (multiply by 1000)'],['mg/L','mg/L (no multiplication)']])
       unitPicker.append(el('option',{value},title));
      prompt.append(unitPicker);card.append(prompt);
-     const info=el('small',{className:'photo-warning'},'TDS is blank because the source unit could not be read. Select the actual unit seen in the photo.');
+     const info=el('small',{className:'photo-warning'},'TDS is blank: source unit unverified. Check the photograph and explicitly select g/L or mg/L before conversion.');
      card.append(info);
      unitPicker.onchange=()=>{
       const v=r.sourceValue;
+      i.value='';i.disabled=!unitPicker.value;
       if(unitPicker.value&&v!=null&&Number.isFinite(v)){
        i.value=String(+(v*(unitPicker.value==='g/L'?1000:1)).toPrecision(10));
        info.textContent='Unit confirmed by user: '+r.sourceDisplay+' '+unitPicker.value+' → '+i.value+' mg/L (approximately ppm for dilute freshwater).';
-      }else if(!unitPicker.value){i.value='';info.textContent='TDS unit unverified: no conversion performed.';}
+      }else if(unitPicker.value){info.textContent='Source unit confirmed, but OCR digits unresolved. Enter the reviewed mg/L value manually or leave blank.';}
+      else{info.textContent='TDS unit unverified: no conversion performed.';}
      };
     }
    }
@@ -151,7 +157,8 @@ function attach(form,options){
     const n=Number(input.value);
     if(!Number.isFinite(n)||(n<0&&!['temp','orp','phmv'].includes(r.key))||(r.key==='ph'&&(n<0||n>14))){status.textContent='Check '+r.label+'.';return;}
     if(unitCheck&&!unitCheck.checked){status.textContent='Check the original photo and confirm the unit for '+r.label+', or leave this field blank.';return;}
-    if(unitPicker&&!unitPicker.value){status.textContent='Select the TDS source unit visible in the photo (g/L or mg/L), or leave TDS blank.';return;}
+    if(r.key==='tds'&&!['g/L','mg/L'].includes(unitPicker?.value||r.sourceUnit)){status.textContent='Select the TDS source unit visible in the photo (g/L or mg/L), or leave TDS blank.';return;}
+    if(unitPicker&&!unitPicker.value){status.textContent='Confirm the TDS source unit before using the reading, or leave TDS blank.';return;}
     if(r.key==='tds'&&r.freshwater&&!freshwater.checked){status.textContent='Confirm dilute freshwater before treating TDS mg/L as approximately ppm, or leave TDS blank.';return;}
     if(target)values.push({r,n,target,unitStatus:r.unitStatus,sourceUnit:unitPicker?.value||r.sourceUnit});
     else additional.push(r.label+': '+n+' '+r.unit);

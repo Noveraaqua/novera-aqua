@@ -4,11 +4,19 @@ const FIELDS=[
  ['temp','Temperature','°C',0,0,/^C$/i],['ph','pH','pH',0,1,/pH$/i],
  ['phmv','pH electrode potential','mV',0,2,/pHm[VY]$/i],['orp','ORP','mV',0,3,/ORPm[VY]$/i],
  ['ec','Conductivity','mS/cm',0,4,/mS\/cm$/i],['do','Dissolved oxygen','mg/L',0,5,/mg\/LD[O0]$/i],
- ['saturation','Oxygen saturation','%',1,0,/%D[O0]$/i],['tds','TDS','ppm',1,1,/(?:mg|g)\/LTDS$/i],['salinity','Salinity','ppt',1,2,/ppt$/i]
+ ['saturation','Oxygen saturation','%',1,0,/%D[O0]$/i],['tds','TDS','ppm',1,1,/^(?:mg|g)\/LTDS$/i],['salinity','Salinity','ppt',1,2,/ppt$/i]
 ].map(([key,label,unit,col,row,unitPattern])=>({key,label,unit,col,row,unitPattern}));
 function normalizeLabel(s){return s.replace(/\s|[°º]/g,'').replace(/[|I\[\]]+$/g,'');}
+// A single, strict source-unit classifier is shared by layout verification and
+// conversion. Never infer units from a TDS suffix with unknown OCR prefix.
+function verifiedTdsUnit(raw){
+ const label=typeof raw==='string'?raw.replace(/\s/g,''):'';
+ if(/^g\/LTDS$/i.test(label))return 'g/L';
+ if(/^mg\/LTDS$/i.test(label))return 'mg/L';
+ return null;
+}
 function checkLayout(labels,spare){
- const matched=Object.fromEntries(FIELDS.map(f=>[f.key,f.unitPattern.test(normalizeLabel(labels[f.key]||''))]));
+ const matched=Object.fromEntries(FIELDS.map(f=>[f.key,f.key==='tds'?verifiedTdsUnit(labels[f.key])!==null:f.unitPattern.test(normalizeLabel(labels[f.key]||''))]));
  // These anchors distinguish the seven-reading display; empty lower-right space distinguishes ten-reading display.
  const anchors=['orp','ec','do','saturation','salinity'];
  const ok=anchors.every(k=>matched[k])&&Object.values(matched).filter(Boolean).length>=7&&!spare.some(t=>/[0-9σ]/.test(t));
@@ -30,16 +38,15 @@ function parse(readings,labels,spare,decisions=null,options={}){
  const rows=FIELDS.map(f=>{
   const passes=readings[f.key]||[],decision=decisions?.[f.key]||null;
   const proposed=decision?decision.value:consensus(f.key,passes);
-  const matched=!!layout.matched[f.key],rawLabel=normalizeLabel(labels[f.key]||'');
-  // Unit provenance is kept separate from numeric confidence. TDS must never
-  // be converted until OCR verified g/L or mg/L, or the user selected it.
-  const g=f.key==='tds'&&/^g\/LTDS$/i.test(rawLabel);
-  const mg=f.key==='tds'&&/^mg\/LTDS$/i.test(rawLabel);
+  // A TDS unit is verified ONLY when the same strict classifier has established
+  // a source unit. Unknown OCR prefixes must not satisfy layout verification.
+  const sourceUnit=f.key==='tds'?verifiedTdsUnit(labels[f.key]):f.unit;
+  const matched=f.key==='tds'?sourceUnit!==null:!!layout.matched[f.key];
+  const g=f.key==='tds'&&sourceUnit==='g/L';
   const unitStatus=matched?'verified':layout.ok&&f.key!=='tds'?'inferred':'missing';
-  const sourceUnit=f.key==='tds'?(g?'g/L':mg?'mg/L':null):f.unit;
   const sourceDisplay=proposed==null?null:(decision?.display??String(proposed));
   const canUseNumber=matched||options.allowUnverified;
-  const ready=canUseNumber&&(!(f.key==='tds')||g||mg)?proposed:null;
+  const ready=canUseNumber&&(f.key!=='tds'||sourceUnit!==null)?proposed:null;
   const factor=f.key==='tds'&&g?1000:1;
   const value=ready==null?null:+(ready*factor).toPrecision(10);
   const display=ready==null?null:(f.key==='tds'&&g?String(ready*1000):sourceDisplay);
@@ -115,5 +122,5 @@ function cropDirect(cv,image,rect,binary=false){
   return new ImageData(new Uint8ClampedArray(rgba.data),rgba.cols,rgba.rows);
  }finally{[src,roi,gray,scaled,border,rgba].forEach(m=>m.delete());}
 }
-const api={FIELDS,checkLayout,consensus,parse,detect,warp,crop,cropDirect};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.HoribaCore=api;
+const api={FIELDS,verifiedTdsUnit,checkLayout,consensus,parse,detect,warp,crop,cropDirect};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.HoribaCore=api;
 })(typeof self!=='undefined'?self:globalThis);
