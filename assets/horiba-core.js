@@ -40,17 +40,21 @@ function parse(readings,labels,spare,decisions=null,options={}){
   const proposed=decision?decision.value:consensus(f.key,passes);
   // A TDS unit is verified ONLY when the same strict classifier has established
   // a source unit. Unknown OCR prefixes must not satisfy layout verification.
-  const sourceUnit=f.key==='tds'?verifiedTdsUnit(labels[f.key]):f.unit;
-  const matched=f.key==='tds'?sourceUnit!==null:!!layout.matched[f.key];
+  // Opt-in configured HORIBA meter always displays TDS in g/L; never claim
+  // this is OCR unit verification.
+  const assumedTds=f.key==='tds'&&options.fixedTdsUnit==='g/L';
+  const sourceUnit=f.key==='tds'?(assumedTds?'g/L':verifiedTdsUnit(labels[f.key])):f.unit;
+  const matched=!!layout.matched[f.key];
   const g=f.key==='tds'&&sourceUnit==='g/L';
-  const unitStatus=matched?'verified':layout.ok&&f.key!=='tds'?'inferred':'missing';
+  const unitStatus=assumedTds?'assumed':matched?'verified':layout.ok&&f.key!=='tds'?'inferred':'missing';
   const sourceDisplay=proposed==null?null:(decision?.display??String(proposed));
-  const canUseNumber=matched||options.allowUnverified;
+  const canUseNumber=matched||assumedTds||options.allowUnverified;
   const ready=canUseNumber&&(f.key!=='tds'||sourceUnit!==null)?proposed:null;
   const factor=f.key==='tds'&&g?1000:1;
   const value=ready==null?null:+(ready*factor).toPrecision(10);
   const display=ready==null?null:(f.key==='tds'&&g?String(ready*1000):sourceDisplay);
   const messages=[];
+  if(unitStatus==='assumed')messages.push('Unit assumed from configured HORIBA meter: g/L. This unit was NOT verified by OCR. Confirm the photo uses this configured meter before applying TDS.');
   if(unitStatus==='inferred')messages.push('INFERRED UNIT: '+f.unit+' is suggested from the verified nine-reading screen position, but OCR did not read its unit label. Check the actual unit on the photo before applying.');
   if(unitStatus==='missing')messages.push(f.key==='tds'?
    'TDS UNIT COULD NOT BE VERIFIED (MISSING / AMBIGUOUS): g/L and mg/L are not interchangeable. No conversion was made. Select the unit actually visible in the photo to use the OCR candidate.':
@@ -65,13 +69,15 @@ function parse(readings,labels,spare,decisions=null,options={}){
    conversion:f.key==='tds'&&ready!=null?String(ready)+' '+sourceUnit+' → '+String(value)+' mg/L':'',
    message:messages.join(' ')};
  });
- const missing=rows.filter(r=>r.unitStatus!=='verified').map(r=>r.key);
+ const missing=rows.filter(r=>r.unitStatus==='missing'||r.unitStatus==='inferred').map(r=>r.key);
+ const assumed=rows.filter(r=>r.unitStatus==='assumed').map(r=>r.key);
  const warnings=[
   layout.ok?'HORIBA nine-reading screen verified using the layout anchors. Individual unit labels may still be missing; review all units and numbers.':
    'HORIBA NINE-READING LAYOUT NOT AUTOMATICALLY VERIFIED. Confirm the exact screen structure and every reading against the photo before using them.',
-  missing.length?'OCR did not verify the unit label for: '+missing.join(', ')+'. All affected values require manual verification.':'All parameter unit labels were recognized; confirm them against the photo anyway.',
+  missing.length?'OCR did not verify the unit label for: '+missing.join(', ')+'. All affected values require manual verification.':'No missing or inferred unit labels for the other parameters; review their readings anyway.',
+  assumed.length?'TDS source unit is assumed from this configured HORIBA meter (g/L), not recognized by OCR. Confirm the configured meter before applying.':null,
   'The meter clock has NOT been applied. Confirm the actual measurement date and time.'
- ];
+ ].filter(Boolean);
  return {readings:rows,layout:{verified:layout.ok,matched:layout.matched,matchedCount:layout.matchedCount,anchorsVerified:layout.anchorsVerified,manualConfirmationRequired:!layout.ok},warnings};
 }
 function detect(cv,image){

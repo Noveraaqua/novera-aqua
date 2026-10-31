@@ -103,12 +103,69 @@ test('TDS valid units agree across detection, conversion and display',()=>{
 });
 test('TDS review UI has defensive picker, disabled input and save gate',()=>{
  const src=fs.readFileSync(require.resolve('../assets/horiba-photo-ui.js'),'utf8');
- assert.match(src,/tdsUnitRequiresReview=r\.key==='tds'&&!\(r\.unitStatus==='verified'&&\['g\/L','mg\/L'\]\.includes\(r\.sourceUnit\)\)/);
+ assert.match(src,/tdsUnitRequiresReview=r\.key==='tds'&&!configuredTds&&/);
  assert.match(src,/if\(tdsUnitRequiresReview\)/);
  assert.match(src,/i\.value='';i\.disabled=true/);
  assert.match(src,/i\.value='';i\.disabled=!unitPicker\.value/);
  assert(src.includes("r.key==='tds'&&!['g/L','mg/L'].includes(unitPicker?.value||r.sourceUnit)"));
  assert.match(src,/I checked all chosen values and units against the photo/);
+});
+
+
+test('Configured HORIBA assumes g/L for unreadable TDS label without claiming OCR verification',()=>{
+ for(const [label,n,converted] of [
+  ['', '0.223',223],['Y g/L TDS','0.199',199],['} g/L TDS','0.223',223],
+  ['S/L TDS','0.194',194],['mg/L TDS','0.207',207]
+ ]){
+  const l={...labels,tds:label};
+  const r=core.parse({tds:p(n)},l,[],null,{allowUnverified:true,fixedTdsUnit:'g/L'});
+  const x=find(r,'tds');
+  assert.equal(x.value,converted);
+  assert.equal(x.display,String(converted));
+  assert.equal(x.sourceValue,Number(n));
+  assert.equal(x.sourceUnit,'g/L');
+  assert.equal(x.unitStatus,'assumed');
+  assert.equal(x.uncertain,true);
+  assert.match(x.message,/Unit assumed from configured HORIBA meter: g\/L/);
+  assert.match(r.warnings.join(' '),/not recognized by OCR/);
+ }
+});
+test('Absent or conflicting TDS digits stay blank even with fixed g/L',()=>{
+ const l={...labels,tds:''};
+ const conflict=[{text:'0.223',score:.99},{text:'0.224',score:.99}];
+ const lowScore=[{text:'0.223',score:.1},{text:'0.223',score:.99}];
+ for(const passes of [[],p('0.223').slice(0,1),conflict,lowScore,p('0.223x')]){
+  const r=core.parse({tds:passes},l,[],null,{allowUnverified:true,fixedTdsUnit:'g/L'});
+  const x=find(r,'tds');
+  assert.equal(x.value,null);assert.equal(x.display,null);
+  assert.equal(x.sourceUnit,'g/L');assert.equal(x.sourceValue,null);
+  assert.equal(x.unitStatus,'assumed');
+ }
+ const unresolved=core.parse({tds:p('0.223')},l,[],{tds:{value:null,display:null,reason:'uncorroborated_candidate'}},{allowUnverified:true,fixedTdsUnit:'g/L'});
+ assert.equal(find(unresolved,'tds').value,null);
+ assert.equal(find(unresolved,'tds').sourceValue,null);
+});
+test('Fixed TDS unit is opt-in; standard mode keeps strict unit verification',()=>{
+ const l={...labels,tds:'Y g/L TDS'};
+ const r=core.parse({tds:p('0.223')},l,[],null,{allowUnverified:true});
+ assert.equal(find(r,'tds').value,null);
+ assert.equal(find(r,'tds').unitStatus,'missing');
+ assert.equal(find(r,'tds').sourceUnit,null);
+});
+test('Experimental pipeline skips TDS unit OCR and opts into fixed g/L',()=>{
+ const src=fs.readFileSync(require.resolve('../assets/horiba-pipeline.js'),'utf8');
+ assert(src.includes("if(experimental&&f.key==='tds')"));
+ assert(src.includes("labels.tds='';labelAttempts.tds=[];continue;"));
+ assert(src.includes("fixedTdsUnit:'g/L'"));
+ assert(src.includes("tdsUnitMode:experimental?'assumed_configured_g/L'"));
+});
+test('Review UI shows assumed TDS provenance and requires explicit confirmation',()=>{
+ const src=fs.readFileSync(require.resolve('../assets/horiba-photo-ui.js'),'utf8');
+ assert(src.includes("r.unitStatus==='assumed'&&r.sourceUnit==='g/L'"));
+ assert(src.includes('I confirm this photo is from the configured HORIBA meter, which displays TDS in g/L.'));
+ assert(src.includes("if(unitCheck&&!unitCheck.checked)"));
+ assert(src.includes('I checked all chosen values and units against the photo.'));
+ assert(src.includes("r.key==='tds'&&r.freshwater&&!freshwater.checked"));
 });
 
 console.log(passed+' unit-review checks passed');

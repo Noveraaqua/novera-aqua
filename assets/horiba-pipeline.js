@@ -9,6 +9,11 @@ async function run(cv,image,read,manual=false,progress=()=>{},experimental=false
  for(let attempt=0;attempt<candidates.length;attempt++){
  const trial=core.warp(cv,image,candidates[attempt].q);labels={};spare=[];labelAttempts={};
  for(const f of core.FIELDS){
+ // Fixed TDS unit is configured for this meter in experimental mode.
+ // Never OCR its unit label or count it as a verified screen label.
+ if(experimental&&f.key==='tds'){
+  labels.tds='';labelAttempts.tds=[];continue;
+ }
  const top=.300+f.row*.097,rect=[f.col?.735:.285,top,f.col?.97:.49,top+.095];
  labels[f.key]='';labelAttempts[f.key]=[];
  const readLabel=async(box,binary,direct=false)=>{
@@ -45,8 +50,8 @@ async function run(cv,image,read,manual=false,progress=()=>{},experimental=false
  if(experimental){const visual=core.crop(cv,screen,HoribaReconcile.visualRegions[f.key]);decisions[f.key]=HoribaReconcile.decide(f.key,readings[f.key],visual);}
  progress({message:'Reading '+f.label+'…',progress:.4+(++done/9)*.55});
  }
- const result=core.parse(readings,labels,spare,experimental?decisions:null,{allowUnverified:true});
- result.diagnostics={mode:best.manual?'user_crop':'automatic',detectorScore:best.detectorScore,layout:result.layout,unitLabels:labels,unitLabelAttempts:best.labelAttempts,spareOcr:spare,fields:core.FIELDS.map(f=>({key:f.key,passes:readings[f.key],decision:experimental?decisions[f.key]:null}))};
+ const result=core.parse(readings,labels,spare,experimental?decisions:null,{allowUnverified:true,...(experimental?{fixedTdsUnit:'g/L'}:{})});
+ result.diagnostics={mode:best.manual?'user_crop':'automatic',detectorScore:best.detectorScore,layout:result.layout,unitLabels:labels,unitLabelAttempts:best.labelAttempts,tdsUnitMode:experimental?'assumed_configured_g/L':'ocr_verified_or_missing',spareOcr:spare,fields:core.FIELDS.map(f=>({key:f.key,passes:readings[f.key],decision:experimental?decisions[f.key]:null}))};
 
 return {result,screen};
 }

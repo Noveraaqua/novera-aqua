@@ -1,8 +1,8 @@
 /* Browser-only OCR controller. Images and recognition text never enter application state. */
 (function(){
 'use strict';
-const VERSION='PaddleOCR-en-v3/esearch-8.5.0',EXPERIMENTAL_VERSION=VERSION+'+visual-reconcile-v3-unit-review-tds-fix1';
-const WORKER_URL=new URL('./horiba-worker.js?v=20261031-tds-fix1',document.currentScript.src).href;
+const VERSION='PaddleOCR-en-v3/esearch-8.5.0',EXPERIMENTAL_VERSION=VERSION+'+visual-reconcile-v3-configured-tds-gl';
+const WORKER_URL=new URL('./horiba-worker.js?v=20261031-configured-tds-gl',document.currentScript.src).href;
 function attach(form,options){
  const host=form.querySelector('[data-photo-host]');if(!host)return;
  let disposed=false,generation=0,worker=null,activeInput=null,canvas=null,bitmap=null,applied=false,used=false,owned={},metadata=[],busy=false,cancelScan=null,activeTimer=null,lastOcrVersion=VERSION;
@@ -87,7 +87,7 @@ function attach(form,options){
  results.append(layoutConfirm);}
  const primary=el('div',{className:'photo-review'}),extra=el('div',{className:'photo-review'});results.append(primary,el('h3',{},'Additional readings'),extra);
   const diagnosticsBtn=el('button',{type:'button',className:'btn ghost sm'},'Download OCR diagnostics (text only)');results.append(diagnosticsBtn);
-  diagnosticsBtn.onclick=()=>{const log={version:lastOcrVersion,time:new Date().toISOString(),diagnostics:parsed.diagnostics||null,readings:parsed.readings.map(r=>({key:r.key,display:r.display,uncertain:r.uncertain,reason:r.reason,raw:r.raw,unitStatus:r.unitStatus,sourceUnit:r.sourceUnit,sourceValue:r.sourceValue,sourceDisplay:r.sourceDisplay}))};
+  diagnosticsBtn.onclick=()=>{const log={version:lastOcrVersion,time:new Date().toISOString(),diagnostics:parsed.diagnostics||null,readings:parsed.readings.map(r=>({key:r.key,display:r.display,uncertain:r.uncertain,reason:r.reason,raw:r.raw,unitStatus:r.unitStatus,sourceUnit:r.sourceUnit,sourceValue:r.sourceValue,sourceDisplay:r.sourceDisplay,unitMode:r.unitStatus==='assumed'?'configured_meter':r.unitStatus}))};
    const url=URL.createObjectURL(new Blob([JSON.stringify(log,null,2)],{type:'application/json'}));
    const a=el('a',{href:url,download:'novera-horiba-ocr-diagnostics.json'});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);};
   rows=parsed.readings.map(r=>{
@@ -99,9 +99,9 @@ function attach(form,options){
    if(r.conversion)card.append(el('small',{},r.conversion));
    if(r.message)card.append(el('small',{className:'photo-warning'},r.message));
    let unitCheck=null,unitPicker=null;
-   // Defence in depth: even an inconsistent producer cannot silently convert
-   // TDS without a verified g/L or mg/L source unit.
-   const tdsUnitRequiresReview=r.key==='tds'&&!(r.unitStatus==='verified'&&['g/L','mg/L'].includes(r.sourceUnit));
+   const configuredTds=r.key==='tds'&&r.unitStatus==='assumed'&&r.sourceUnit==='g/L';
+   // Non-configured scans still need source-unit OCR or explicit user selection.
+   const tdsUnitRequiresReview=r.key==='tds'&&!configuredTds&&!(r.unitStatus==='verified'&&['g/L','mg/L'].includes(r.sourceUnit));
    if(r.unitStatus!=='verified'&&r.key!=='tds'){
     const row=el('label',{className:'photo-review-confirm'});unitCheck=el('input',{type:'checkbox'});
     row.append(unitCheck,document.createTextNode('I checked the photo and confirm '+r.label+' uses '+r.unit+'.'));
@@ -109,6 +109,11 @@ function attach(form,options){
    }
    if(r.key==='tds'){
     card.append(el('small',{},'For dilute freshwater only: mg/L ≈ ppm. Do not use this assumption for saline samples.'));
+    if(configuredTds){
+     const row=el('label',{className:'photo-review-confirm'});unitCheck=el('input',{type:'checkbox'});
+     row.append(unitCheck,document.createTextNode('I confirm this photo is from the configured HORIBA meter, which displays TDS in g/L.'));
+     card.append(row);
+    }
     if(tdsUnitRequiresReview){
      i.value='';i.disabled=true; // Do not allow a converted value before source-unit selection.
      const prompt=el('label',{},'TDS source unit shown on the original meter photo');
@@ -157,7 +162,7 @@ function attach(form,options){
     const n=Number(input.value);
     if(!Number.isFinite(n)||(n<0&&!['temp','orp','phmv'].includes(r.key))||(r.key==='ph'&&(n<0||n>14))){status.textContent='Check '+r.label+'.';return;}
     if(unitCheck&&!unitCheck.checked){status.textContent='Check the original photo and confirm the unit for '+r.label+', or leave this field blank.';return;}
-    if(r.key==='tds'&&!['g/L','mg/L'].includes(unitPicker?.value||r.sourceUnit)){status.textContent='Select the TDS source unit visible in the photo (g/L or mg/L), or leave TDS blank.';return;}
+    if(r.key==='tds'&&!['g/L','mg/L'].includes(unitPicker?.value||r.sourceUnit)){status.textContent='Verify the TDS source unit or leave TDS blank.';return;}
     if(unitPicker&&!unitPicker.value){status.textContent='Confirm the TDS source unit before using the reading, or leave TDS blank.';return;}
     if(r.key==='tds'&&r.freshwater&&!freshwater.checked){status.textContent='Confirm dilute freshwater before treating TDS mg/L as approximately ppm, or leave TDS blank.';return;}
     if(target)values.push({r,n,target,unitStatus:r.unitStatus,sourceUnit:unitPicker?.value||r.sourceUnit});

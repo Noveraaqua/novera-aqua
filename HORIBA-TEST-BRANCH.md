@@ -49,3 +49,13 @@ Report: browser/device and OS version, sample photo ID, extracted readings, wron
 - The photo review always shows a source-unit selector when TDS lacks a valid verified source unit, even if contradictory status metadata appears. The TDS value cannot be entered before source-unit selection; changing/clearing selection clears the proposed conversion.
 - All selected readings and freshwater approximations still require human confirmation before applying; no changes are made to existing records, the standard scanner, or `main` by this patch.
 - Diagnostics from the patch carry `visual-reconcile-v3-unit-review-tds-fix1`. Test both ambiguous source labels and valid g/L / mg/L meter labels before release.
+
+## Configured-meter TDS g/L assumption (31 October 2026)
+
+- Only when **Try experimental visual reconciliation** is selected, the HORIBA nine-reading scanner assumes the user's **specific configured meter** always displays TDS in **g/L**. This is a meter-specific assumption, **not OCR verification**, and is not a rule for other instruments.
+- Experimental TDS **unit-label OCR is skipped entirely**. The TDS label does not count toward the layout's verified fields or anchors; the other HORIBA labels still verify the screen. Standard mode continues to require strict, independently verified TDS units.
+- If the numeric TDS decision is reliable, convert TDS g/L to mg/L by multiplying by **1,000**, display the converted value and source, and preserve the raw numeric value. Garbled or absent labels do not block this meter-specific conversion.
+- Unit status **assumed**, source unit **g/L** and the exact message **"Unit assumed from configured HORIBA meter: g/L"** distinguish provenance from OCR-verified units in the review, diagnostics, and applied metadata.
+- The user must explicitly confirm the photograph comes from the configured meter, confirm reviewed readings, and still confirm freshwater when approximating mg/L as ppm; nothing is saved automatically.
+- If TDS digits are missing, conflicting, low-confidence, or uncorroborated, TDS remains **blank**, regardless of the unit assumption. Never guess a number.
+- Updated experimental diagnostics version: **visual-reconcile-v3-configured-tds-gl**. Re-run original and new photos on a mobile browser. Keep the production **main** branch unchanged until validated.
